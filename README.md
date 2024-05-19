@@ -32,6 +32,7 @@ To get started with UC-MapPainter, simply clone the repository and build the app
 - **Urban Chaos Discord**: [Urban Chaos Discord](https://discord.gg/EhFGnWWagx)
 - **Pieroz**: Special thanks to [Pieroz](https://github.com/PieroZ) for breathing life into Urban Chaos modding.
 - **Inco1**: [Inco1](https://github.com/inco1/) - The PHP tools he created served as the basis for understanding .iam files.
+- **ChatGPT**: This tool was created in its entirety with the assitance of ChatGPT4-Omni
 
 ## Contributing
 Contributions to UC-MapPainter are welcome. Please feel free to fork the repository, make your changes, and submit a pull request.
