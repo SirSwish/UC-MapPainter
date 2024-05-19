@@ -11,7 +11,7 @@ UC-MapPainter is an application used for creating, modifying, and exporting the 
 - **Save Maps**: Save maps back to .iam format for use in the Urban Chaos game.
 
 ## Getting Started
-To get started with UC-MapPainter, simply clone the repository and build the application. No additional requirements are necessary.
+To get started with UC-MapPainter, simply clone the repository and build the application. You will also need to download the Textures and Map folder and place them in the same directory as your EXE.
 
 1. Clone the repository
 2. Build and run the application
