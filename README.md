@@ -27,7 +27,7 @@ To get started with UC-MapPainter, simply clone the repository and build the app
 ![Screenshot 1](screenshot1.PNG)
 ![Screenshot 2](screenshot2.PNG)
 ![Screenshot 3](screenshot3.PNG)
-
+![Screenshot 4](screenshot4.PNG)
 ## Acknowledgements
 - **Urban Chaos Discord**: [Urban Chaos Discord](https://discord.gg/EhFGnWWagx)
 - **Pieroz**: Special thanks to [Pieroz](https://github.com/PieroZ) for breathing life into Urban Chaos modding.
