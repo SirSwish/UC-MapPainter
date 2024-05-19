@@ -14,6 +14,7 @@ namespace UC_MapPainter
 {
     public partial class MainWindow : Window
     {
+        private string loadedFilePath;
         private SelectedTextureWindow selectedTextureWindow;
         private TextureSelectionWindow textureSelectionWindow;
         private GridModel gridModel = new GridModel();
@@ -57,6 +58,8 @@ namespace UC_MapPainter
             var worldSelectionWindow = new WorldSelectionWindow();
             if (worldSelectionWindow.ShowDialog() == true)
             {
+                loadedFilePath = null; // Reset the loaded file path when creating a new map
+                LoadedFilePathLabel.Text = "None"; // Update label
                 string selectedWorld = worldSelectionWindow.SelectedWorld;
                 selectedWorldNumber = ExtractWorldNumber(selectedWorld);
 
@@ -95,6 +98,8 @@ namespace UC_MapPainter
 
         private void LoadMap(string filePath)
         {
+            loadedFilePath = filePath; // Store the loaded file path
+
             byte[] fileBytes = File.ReadAllBytes(filePath);
 
             // Determine the world number from the specified offset (0x7D4 from the end of the file)
@@ -150,9 +155,9 @@ namespace UC_MapPainter
             ProgressBar.Value = 0;
             ProgressBar.Visibility = Visibility.Visible;
 
-            for (int col = 0; col < 128; col++)
+            for (int col = 0; col < 128; col++) // Iterate columns first
             {
-                for (int row = 0; row < 128; row++)
+                for (int row = 0; row < 128; row++) // Then iterate rows
                 {
                     byte textureByte = fileBytes[index];
                     byte combinedByte = fileBytes[index + 1];
@@ -166,8 +171,9 @@ namespace UC_MapPainter
                         Height = 64
                     };
                     cell.MouseLeftButtonDown += Cell_MouseLeftButtonDown;
-                    Grid.SetRow(cell, 127 - row);
-                    Grid.SetColumn(cell, 127 - col);
+                    cell.MouseRightButtonDown += Cell_MouseRightButtonDown; // Add right-click event handler
+                    Grid.SetRow(cell, 127 - row); // Correct mapping for row
+                    Grid.SetColumn(cell, 127 - col); // Correct mapping for column
                     MainContentGrid.Children.Add(cell);
 
                     string textureType;
@@ -204,15 +210,18 @@ namespace UC_MapPainter
                         _ => 0.0
                     };
 
-                    gridModel.Cells.Add(new Cell
+                    // Update gridModel.Cells
+                    var cellData = new Cell
                     {
-                        Row = 127 - row,
-                        Column = 127 - col,
+                        Row = row,
+                        Column = col,
                         TextureType = textureType,
                         TextureNumber = textureNumber,
                         Rotation = (int)rotation
-                    });
+                    };
+                    gridModel.Cells.Add(cellData);
 
+                    // Use the cell data to set the cell background
                     await PaintCell(cell, textureType, textureNumber, rotation);
                 }
             }
@@ -220,6 +229,10 @@ namespace UC_MapPainter
             ProgressBar.Value = 128 * 128; // Ensure progress bar is complete
             ProgressBar.Visibility = Visibility.Collapsed;
         }
+
+
+
+
 
         private async Task InitializeMapGridAsync(string selectedWorld)
         {
@@ -260,6 +273,7 @@ namespace UC_MapPainter
                         Height = 64
                     };
                     cell.MouseLeftButtonDown += Cell_MouseLeftButtonDown;
+                    cell.MouseRightButtonDown += Cell_MouseRightButtonDown; // Add right-click event handler
                     Grid.SetRow(cell, 127 - row);
                     Grid.SetColumn(cell, 127 - col);
                     MainContentGrid.Children.Add(cell);
@@ -332,6 +346,30 @@ namespace UC_MapPainter
             }
         }
 
+        private void Cell_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.RightButton == MouseButtonState.Pressed && sender is Border cell)
+            {
+                int row = 127 - Grid.GetRow(cell);
+                int col = 127 - Grid.GetColumn(cell);
+
+                var cellData = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
+                if (cellData != null)
+                {
+                    string textureFolder = cellData.TextureType == "world" ? $"world{selectedWorldNumber}" : cellData.TextureType;
+                    string texturePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Textures", textureFolder, $"tex{cellData.TextureNumber:D3}hi.bmp");
+
+                    string debugMessage = $"Cell Debug Information:\n" +
+                                          $"X: {col}\n" +
+                                          $"Y: {row}\n" +
+                                          $"Texture File Path: {texturePath}\n" +
+                                          $"Texture Type: {cellData.TextureType}\n" +
+                                          $"Rotation: {cellData.Rotation}°";
+                    MessageBox.Show(debugMessage, "Cell Debug Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+        }
+
         private void MainContentGrid_MouseMove(object sender, MouseEventArgs e)
         {
             var position = e.GetPosition(MainContentGrid);
@@ -396,8 +434,16 @@ namespace UC_MapPainter
                         Height = 64
                     }
                 };
+
+                // Add debug statement for verification
+                string debugMessage = $"Painting cell ({Grid.GetColumn(cell)}, {Grid.GetRow(cell)}):\nTexturePath: {texturePath}\nRotation: {rotation}°";
+           //     MessageBox.Show(debugMessage, "Debug Information", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
+
+
+
+
 
         private void SaveMap_Click(object sender, RoutedEventArgs e)
         {
@@ -425,24 +471,59 @@ namespace UC_MapPainter
                     }
                 }
 
-                string defaultFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Map", "default.iam");
-                byte[] fileBytes = File.ReadAllBytes(defaultFilePath);
+                // Use the loaded file path as the template if a map was loaded, otherwise use default.iam
+                string templateFilePath = loadedFilePath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Map", "default.iam");
+                byte[] fileBytes = File.ReadAllBytes(templateFilePath);
 
-                // Overwrite the textureByte and combinedByte for each cell in column-major order
-                int index = 8; // Starting after the 8-byte header
-                foreach (var col in Enumerable.Range(0, 128))
+                // Determine the save order based on whether the default template or a loaded template is used
+                if (loadedFilePath == null)
                 {
-                    foreach (var row in Enumerable.Range(0, 128))
+                    // Saving using the default template
+                    int index = 8; // Starting after the 8-byte header
+                    for (int col = 0; col < 128; col++) // Left to right columns
                     {
-                        var cell = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
-                        if (cell != null)
+                        for (int row = 0; row < 128; row++) // Bottom to top rows
                         {
-                            bool isDefaultTexture = cell.TextureNumber == 0 && cell.TextureType == "world";
-                            cell.UpdateTileSequence(isDefaultTexture);
-                            fileBytes[index] = cell.TileSequence[0]; // textureByte
-                            fileBytes[index + 1] = cell.TileSequence[1]; // combinedByte
-                            // Skipping the remaining 4 bytes of the 6-byte sequence
-                            index += 6;
+                            var cell = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
+                            if (cell != null)
+                            {
+                                bool isDefaultTexture = cell.TextureNumber == 0 && cell.TextureType == "world";
+                                cell.UpdateTileSequence(isDefaultTexture);
+                                fileBytes[index] = cell.TileSequence[0]; // textureByte
+                                fileBytes[index + 1] = cell.TileSequence[1]; // combinedByte
+
+                                // Add debug statement for cell 0,0
+                                if (row == 0 && col == 0)
+                                {
+                                    string debugMessage = $"Saving cell (0,0):\nTextureByte: {cell.TileSequence[0]:X2}\nCombinedByte: {cell.TileSequence[1]:X2}";
+                                    MessageBox.Show(debugMessage, "Debug Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                                }
+
+                                // Skipping the remaining 4 bytes of the 6-byte sequence
+                                index += 6;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Saving using a loaded template (reverse order)
+                    int index = 8; // Starting after the 8-byte header
+                    for (int col = 0; col < 128; col++) // Left to right columns
+                    {
+                        for (int row = 0; row < 128; row++) // Bottom to top rows
+                        {
+                            var cell = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
+                            if (cell != null)
+                            {
+                                bool isDefaultTexture = cell.TextureNumber == 0 && cell.TextureType == "world";
+                                cell.UpdateTileSequence(isDefaultTexture);
+                                fileBytes[index] = cell.TileSequence[0]; // textureByte
+                                fileBytes[index + 1] = cell.TileSequence[1]; // combinedByte
+
+                                // Skipping the remaining 4 bytes of the 6-byte sequence
+                                index += 6;
+                            }
                         }
                     }
                 }
@@ -463,6 +544,8 @@ namespace UC_MapPainter
                 MessageBox.Show($"Map saved to {userFilePath} and {exportFilePath}", "Save Successful", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
+
+
 
         private void ZoomIn_Click(object sender, RoutedEventArgs e)
         {
@@ -540,6 +623,5 @@ namespace UC_MapPainter
         {
             Application.Current.Shutdown();
         }
-
     }
 }

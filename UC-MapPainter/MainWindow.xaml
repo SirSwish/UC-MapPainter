@@ -11,12 +11,13 @@
                 <MenuItem Header="Export Map to BMP" Click="ExportMapToBmp_Click" x:Name="ExportMenuItem" IsEnabled="False"/>
                 <MenuItem Header="Exit" Click="Exit_Click"/>
             </MenuItem>
-
         </Menu>
         <Grid DockPanel.Dock="Top" Height="50" Background="LightGray">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0">
                 <Label Content="Mouse Position: " />
                 <Label Name="MousePositionLabel" />
+                <Label Content="  Loaded File: " Margin="10,0,0,0"/>
+                <TextBlock Name="LoadedFilePathLabel" Text="None" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="10,0">
                 <Button Content="+" Click="ZoomIn_Click" Width="30" Height="30" Margin="5,0"/>
