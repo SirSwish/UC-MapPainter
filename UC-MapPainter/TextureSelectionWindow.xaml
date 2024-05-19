@@ -1,0 +1,58 @@
+﻿<Window x:Class="UC_MapPainter.TextureSelectionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Texture Selection" Height="1000" Width="400"
+        WindowStyle="ToolWindow" Topmost="True">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="10">
+            <!-- World Number Drop Down -->
+            <ComboBox Name="WorldNumberComboBox" SelectionChanged="WorldNumberComboBox_SelectionChanged" Margin="0,0,0,10">
+                <ComboBoxItem Content="World 1"/>
+                <ComboBoxItem Content="World 3"/>
+                <ComboBoxItem Content="World 4"/>
+                <ComboBoxItem Content="World 5"/>
+                <ComboBoxItem Content="World 7"/>
+                <ComboBoxItem Content="World 8"/>
+                <ComboBoxItem Content="World 9"/>
+                <ComboBoxItem Content="World 10"/>
+                <ComboBoxItem Content="World 11"/>
+                <ComboBoxItem Content="World 12"/>
+                <ComboBoxItem Content="World 13"/>
+                <ComboBoxItem Content="World 15"/>
+                <ComboBoxItem Content="World 16"/>
+                <ComboBoxItem Content="World 17"/>
+                <ComboBoxItem Content="World 18"/>
+                <ComboBoxItem Content="World 20"/>
+            </ComboBox>
+
+            <!-- World Textures -->
+            <TextBlock Text="World Textures" FontWeight="Bold" Margin="0,0,0,5"/>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Height="200">
+                <UniformGrid Name="WorldTexturesGrid" Columns="4" Margin="0,0,0,10">
+                    <!-- Images will be dynamically added here -->
+                </UniformGrid>
+            </ScrollViewer>
+
+            <!-- Shared Textures -->
+            <TextBlock Text="Shared Textures" FontWeight="Bold" Margin="0,0,0,5"/>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Height="200">
+                <UniformGrid Name="SharedTexturesGrid" Columns="4" Margin="0,0,0,10">
+                    <!-- Images will be dynamically added here -->
+                </UniformGrid>
+            </ScrollViewer>
+
+            <!-- Prim Textures -->
+            <TextBlock Text="Prim Textures" FontWeight="Bold" Margin="0,0,0,5"/>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Height="200">
+                <UniformGrid Name="PrimTexturesGrid" Columns="4" Margin="0,0,0,10">
+                    <!-- Images will be dynamically added here -->
+                </UniformGrid>
+            </ScrollViewer>
+
+            <!-- World Sky -->
+            <TextBlock Text="World Sky" FontWeight="Bold" Margin="0,0,0,5"/>
+            <Image Name="WorldSkyImage" Width="128" Height="128" Margin="0,0,0,10"/>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

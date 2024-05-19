@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.7.34018.315
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UC-MapPainter", "UC-MapPainter\UC-MapPainter.csproj", "{AE41ECF3-8263-40A0-BC65-A8C8CBCCBC9B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AE41ECF3-8263-40A0-BC65-A8C8CBCCBC9B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE41ECF3-8263-40A0-BC65-A8C8CBCCBC9B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE41ECF3-8263-40A0-BC65-A8C8CBCCBC9B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE41ECF3-8263-40A0-BC65-A8C8CBCCBC9B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {380AB30D-D356-417C-BEF9-C5E6E4A09A50}
+	EndGlobalSection
+EndGlobal

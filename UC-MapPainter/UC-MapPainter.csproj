@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <RootNamespace>UC_MapPainter</RootNamespace>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Images\default.bmp" />
+    <None Remove="Map\default.iam" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Images\default.bmp" />
+    <Resource Include="Map\default.iam" />
+  </ItemGroup>
+
+</Project>
