@@ -177,7 +177,7 @@ namespace UC_MapPainter
                 {
                     byte textureByte = fileBytes[index];
                     byte combinedByte = fileBytes[index + 1];
-                    byte heightByte = fileBytes[index + 4];
+                    sbyte heightByte = (sbyte)fileBytes[index + 4]; // Convert to signed byte
                     index += 6; // Skip to the next 6-byte sequence
 
                     var cell = new Border
@@ -235,7 +235,7 @@ namespace UC_MapPainter
                         TextureType = textureType,
                         TextureNumber = textureNumber,
                         Rotation = (int)rotation,
-                        Height = heightByte // Assign the height from the loaded byte
+                        Height = heightByte // Assign the height from the loaded byte as signed
                     };
                     gridModel.Cells.Add(cellData);
 
@@ -254,6 +254,7 @@ namespace UC_MapPainter
             ProgressBar.Value = 128 * 128; // Ensure progress bar is complete
             ProgressBar.Visibility = Visibility.Collapsed;
         }
+
 
         private async Task InitializeMapGridAsync(string selectedWorld)
         {
