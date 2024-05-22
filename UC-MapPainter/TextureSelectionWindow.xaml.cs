@@ -11,7 +11,7 @@ namespace UC_MapPainter
     public partial class TextureSelectionWindow : Window
     {
         private bool _isLoaded = false;
-        private SelectedTextureWindow _selectedTextureWindow;
+        private MainWindow _mainWindow;
         private bool _isWorldLocked = false;
 
         public TextureSelectionWindow()
@@ -20,9 +20,9 @@ namespace UC_MapPainter
             this.Loaded += TextureSelectionWindow_Loaded;
         }
 
-        public void SetSelectedTextureWindow(SelectedTextureWindow selectedTextureWindow)
+        public void SetMainWindow(MainWindow mainWindow)
         {
-            _selectedTextureWindow = selectedTextureWindow;
+            _mainWindow = mainWindow;
         }
 
         private async void TextureSelectionWindow_Loaded(object sender, RoutedEventArgs e)
@@ -138,11 +138,11 @@ namespace UC_MapPainter
 
         private void TextureImage_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            if (sender is Image image && _selectedTextureWindow != null)
+            if (sender is Image image && _mainWindow != null)
             {
                 if (image.Tag is TextureInfo textureInfo)
                 {
-                    _selectedTextureWindow.UpdateSelectedTexture(image.Source, textureInfo.Type, GetTextureNumberFromFilePath(textureInfo.FilePath));
+                    _mainWindow.UpdateSelectedTexture(image.Source, textureInfo.Type, GetTextureNumberFromFilePath(textureInfo.FilePath));
                 }
             }
         }

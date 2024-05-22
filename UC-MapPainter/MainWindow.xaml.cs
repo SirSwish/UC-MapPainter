@@ -15,11 +15,14 @@ namespace UC_MapPainter
     public partial class MainWindow : Window
     {
         private string loadedFilePath;
-        private SelectedTextureWindow selectedTextureWindow;
         private TextureSelectionWindow textureSelectionWindow;
         private GridModel gridModel = new GridModel();
         private int selectedWorldNumber;
         private ScaleTransform scaleTransform = new ScaleTransform();
+        private string selectedTextureType;
+        private int selectedTextureNumber;
+        private int selectedTextureRotation = 0;
+        public bool IsEditMode { get; private set; }
 
         public MainWindow()
         {
@@ -30,27 +33,33 @@ namespace UC_MapPainter
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            InitializeSelectedTextureWindow();
             InitializeTextureSelectionWindow();
-        }
-
-        private void InitializeSelectedTextureWindow()
-        {
-            selectedTextureWindow = new SelectedTextureWindow();
-            selectedTextureWindow.Left = 10;
-            selectedTextureWindow.Top = 50;
-            selectedTextureWindow.Show();
-            selectedTextureWindow.Owner = this; // Set the owner after showing the window
+            SetEditMode("Textures");
         }
 
         private void InitializeTextureSelectionWindow()
         {
-            textureSelectionWindow = new TextureSelectionWindow();
-            textureSelectionWindow.SetSelectedTextureWindow(selectedTextureWindow);
-            textureSelectionWindow.Left = this.Left + this.Width - textureSelectionWindow.Width - 10;
-            textureSelectionWindow.Top = 50;
-            textureSelectionWindow.Show();
-            textureSelectionWindow.Owner = this; // Set the owner after showing the window
+            if (textureSelectionWindow == null || !textureSelectionWindow.IsLoaded)
+            {
+                textureSelectionWindow = new TextureSelectionWindow();
+                textureSelectionWindow.SetMainWindow(this);
+                textureSelectionWindow.Left = this.Left + this.Width - textureSelectionWindow.Width - 10;
+                textureSelectionWindow.Top = 50;
+                textureSelectionWindow.Closed += TextureSelectionWindow_Closed;
+                textureSelectionWindow.Show();
+                textureSelectionWindow.Owner = this; // Set the owner after showing the window
+                TextureSelectionMenuItem.IsEnabled = false; // Disable the menu item
+            }
+        }
+
+        private void TextureSelectionWindow_Closed(object sender, EventArgs e)
+        {
+            TextureSelectionMenuItem.IsEnabled = true; // Enable the menu item when the window is closed
+        }
+
+        private void TextureSelection_Click(object sender, RoutedEventArgs e)
+        {
+            InitializeTextureSelectionWindow();
         }
 
         private async void NewMap_Click(object sender, RoutedEventArgs e)
@@ -92,11 +101,11 @@ namespace UC_MapPainter
             if (openFileDialog.ShowDialog() == true)
             {
                 string filePath = openFileDialog.FileName;
-                LoadMap(filePath);
+                LoadMapAsync(filePath);
             }
         }
 
-        private void LoadMap(string filePath)
+        private async void LoadMapAsync(string filePath)
         {
             loadedFilePath = filePath; // Store the loaded file path
 
@@ -127,16 +136,23 @@ namespace UC_MapPainter
             textureSelectionWindow.LockWorld();
             textureSelectionWindow.LoadWorldTextures(selectedWorld);
 
-            // Load the cells
+            // Show Generating Map window and progress bar
             ProgressBar.Visibility = Visibility.Visible;
-            InitializeMapGridFromBytes(fileBytes);
+            var generatingMapWindow = new GeneratingMapWindow();
+            generatingMapWindow.Owner = this;
+            generatingMapWindow.Show();
+
+            // Load the cells
+            await InitializeMapGridFromBytesAsync(fileBytes);
+
+            generatingMapWindow.Close();
             ProgressBar.Visibility = Visibility.Collapsed;
 
             SaveMenuItem.IsEnabled = true;
             ExportMenuItem.IsEnabled = true; // Enable the Export menu item
         }
 
-        private async Task InitializeMapGridFromBytes(byte[] fileBytes)
+        private async Task InitializeMapGridFromBytesAsync(byte[] fileBytes)
         {
             MainContentGrid.Children.Clear();
             MainContentGrid.RowDefinitions.Clear();
@@ -161,6 +177,7 @@ namespace UC_MapPainter
                 {
                     byte textureByte = fileBytes[index];
                     byte combinedByte = fileBytes[index + 1];
+                    byte heightByte = fileBytes[index + 4];
                     index += 6; // Skip to the next 6-byte sequence
 
                     var cell = new Border
@@ -217,22 +234,26 @@ namespace UC_MapPainter
                         Column = col,
                         TextureType = textureType,
                         TextureNumber = textureNumber,
-                        Rotation = (int)rotation
+                        Rotation = (int)rotation,
+                        Height = heightByte // Assign the height from the loaded byte
                     };
                     gridModel.Cells.Add(cellData);
 
                     // Use the cell data to set the cell background
                     await PaintCell(cell, textureType, textureNumber, rotation);
+
+                    // Update progress every 128 cells
+                    if ((col * 128 + row) % 128 == 0)
+                    {
+                        ProgressBar.Value = col * 128 + row;
+                        await Task.Delay(1); // Yield to UI thread
+                    }
                 }
             }
 
             ProgressBar.Value = 128 * 128; // Ensure progress bar is complete
             ProgressBar.Visibility = Visibility.Collapsed;
         }
-
-
-
-
 
         private async Task InitializeMapGridAsync(string selectedWorld)
         {
@@ -284,7 +305,8 @@ namespace UC_MapPainter
                         Column = 127 - col,
                         TextureType = "world",
                         TextureNumber = 0,
-                        Rotation = 0
+                        Rotation = 0,
+                        Height = 0 // Initialize height to 0 for new maps
                     });
 
                     // Update progress every 100 cells
@@ -302,45 +324,69 @@ namespace UC_MapPainter
 
         private void Cell_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (sender is Border cell && selectedTextureWindow != null)
+            if (sender is Border cell)
             {
-                var selectedTexture = selectedTextureWindow.SelectedTextureImage.Source;
-                if (selectedTexture != null)
+                int row = 127 - Grid.GetRow(cell);
+                int col = 127 - Grid.GetColumn(cell);
+
+                var cellData = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
+                if (cellData != null)
                 {
-                    var imageBrush = new ImageBrush
+                    if (IsEditMode)
                     {
-                        ImageSource = selectedTexture,
-                        Stretch = Stretch.None,
-                        AlignmentX = AlignmentX.Center,
-                        AlignmentY = AlignmentY.Center
-                    };
+                        int increment = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift) ? 10 : 1;
+                        cellData.Height = Math.Min(cellData.Height + increment, 127);
 
-                    var rotateTransform = new RotateTransform(selectedTextureWindow.SelectedTextureRotation, 32, 32);
-
-                    cell.Background = new VisualBrush
-                    {
-                        Visual = new Image
+                        if (cell.Child is TextBlock textBlock)
                         {
-                            Source = selectedTexture,
-                            RenderTransform = rotateTransform,
-                            RenderTransformOrigin = new Point(0.5, 0.5),
-                            Stretch = Stretch.Fill,
-                            Width = 64,
-                            Height = 64
+                            textBlock.Text = cellData.Height.ToString();
                         }
-                    };
-
-                    int row = 127 - Grid.GetRow(cell);
-                    int col = 127 - Grid.GetColumn(cell);
-
-                    var cellData = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
-                    if (cellData != null)
+                        else
+                        {
+                            cell.Child = new TextBlock
+                            {
+                                Text = cellData.Height.ToString(),
+                                Foreground = Brushes.Red,
+                                FontWeight = FontWeights.Bold,
+                                Margin = new Thickness(0, 0, 5, 5),
+                                HorizontalAlignment = HorizontalAlignment.Right,
+                                VerticalAlignment = VerticalAlignment.Bottom
+                            };
+                        }
+                    }
+                    else
                     {
-                        bool isDefaultTexture = selectedTextureWindow.SelectedTextureNumber == 0 && selectedTextureWindow.SelectedTextureType == "world";
-                        cellData.TextureType = selectedTextureWindow.SelectedTextureType;
-                        cellData.TextureNumber = selectedTextureWindow.SelectedTextureNumber;
-                        cellData.Rotation = selectedTextureWindow.SelectedTextureRotation;
-                        cellData.UpdateTileSequence(isDefaultTexture);
+                        if (SelectedTextureImage.Source != null)
+                        {
+                            var imageBrush = new ImageBrush
+                            {
+                                ImageSource = SelectedTextureImage.Source,
+                                Stretch = Stretch.None,
+                                AlignmentX = AlignmentX.Center,
+                                AlignmentY = AlignmentY.Center
+                            };
+
+                            var rotateTransform = new RotateTransform(selectedTextureRotation, 32, 32);
+
+                            cell.Background = new VisualBrush
+                            {
+                                Visual = new Image
+                                {
+                                    Source = SelectedTextureImage.Source,
+                                    RenderTransform = rotateTransform,
+                                    RenderTransformOrigin = new Point(0.5, 0.5),
+                                    Stretch = Stretch.Fill,
+                                    Width = 64,
+                                    Height = 64
+                                }
+                            };
+
+                            bool isDefaultTexture = selectedTextureNumber == 0 && selectedTextureType == "world";
+                            cellData.TextureType = selectedTextureType;
+                            cellData.TextureNumber = selectedTextureNumber;
+                            cellData.Rotation = selectedTextureRotation;
+                            cellData.UpdateTileSequence(isDefaultTexture);
+                        }
                     }
                 }
             }
@@ -350,22 +396,54 @@ namespace UC_MapPainter
         {
             if (e.RightButton == MouseButtonState.Pressed && sender is Border cell)
             {
-                int row = 127 - Grid.GetRow(cell);
-                int col = 127 - Grid.GetColumn(cell);
-
-                var cellData = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
-                if (cellData != null)
+                if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
                 {
-                    string textureFolder = cellData.TextureType == "world" ? $"world{selectedWorldNumber}" : cellData.TextureType;
-                    string texturePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Textures", textureFolder, $"tex{cellData.TextureNumber:D3}hi.bmp");
+                    int row = 127 - Grid.GetRow(cell);
+                    int col = 127 - Grid.GetColumn(cell);
 
-                    string debugMessage = $"Cell Debug Information:\n" +
-                                          $"X: {col}\n" +
-                                          $"Y: {row}\n" +
-                                          $"Texture File Path: {texturePath}\n" +
-                                          $"Texture Type: {cellData.TextureType}\n" +
-                                          $"Rotation: {cellData.Rotation}°";
-                    MessageBox.Show(debugMessage, "Cell Debug Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                    var cellData = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
+                    if (cellData != null)
+                    {
+                        string textureFolder = cellData.TextureType == "world" ? $"world{selectedWorldNumber}" : cellData.TextureType;
+                        string texturePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Textures", textureFolder, $"tex{cellData.TextureNumber:D3}hi.bmp");
+
+                        string debugMessage = $"Cell Debug Information:\n" +
+                                              $"X: {col}\n" +
+                                              $"Y: {row}\n" +
+                                              $"Texture File Path: {texturePath}\n" +
+                                              $"Texture Type: {cellData.TextureType}\n" +
+                                              $"Rotation: {cellData.Rotation}°\n" +
+                                              $"Height: {cellData.Height}";
+                        MessageBox.Show(debugMessage, "Cell Debug Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+                else if (IsEditMode)
+                {
+                    int row = 127 - Grid.GetRow(cell);
+                    int col = 127 - Grid.GetColumn(cell);
+
+                    var cellData = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
+                    if (cellData != null)
+                    {
+                        int decrement = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift) ? 10 : 1;
+                        cellData.Height = Math.Max(cellData.Height - decrement, -127);
+                        if (cell.Child is TextBlock textBlock)
+                        {
+                            textBlock.Text = cellData.Height.ToString();
+                        }
+                        else
+                        {
+                            cell.Child = new TextBlock
+                            {
+                                Text = cellData.Height.ToString(),
+                                Foreground = Brushes.Red,
+                                FontWeight = FontWeights.Bold,
+                                Margin = new Thickness(0, 0, 5, 5),
+                                HorizontalAlignment = HorizontalAlignment.Right,
+                                VerticalAlignment = VerticalAlignment.Bottom
+                            };
+                        }
+                    }
                 }
             }
         }
@@ -437,13 +515,9 @@ namespace UC_MapPainter
 
                 // Add debug statement for verification
                 string debugMessage = $"Painting cell ({Grid.GetColumn(cell)}, {Grid.GetRow(cell)}):\nTexturePath: {texturePath}\nRotation: {rotation}°";
-           //     MessageBox.Show(debugMessage, "Debug Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                // MessageBox.Show(debugMessage, "Debug Information", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
-
-
-
-
 
         private void SaveMap_Click(object sender, RoutedEventArgs e)
         {
@@ -491,11 +565,12 @@ namespace UC_MapPainter
                                 cell.UpdateTileSequence(isDefaultTexture);
                                 fileBytes[index] = cell.TileSequence[0]; // textureByte
                                 fileBytes[index + 1] = cell.TileSequence[1]; // combinedByte
+                                fileBytes[index + 4] = (byte)cell.Height; // height
 
                                 // Add debug statement for cell 0,0
                                 if (row == 0 && col == 0)
                                 {
-                                    string debugMessage = $"Saving cell (0,0):\nTextureByte: {cell.TileSequence[0]:X2}\nCombinedByte: {cell.TileSequence[1]:X2}";
+                                    string debugMessage = $"Saving cell (0,0):\nTextureByte: {cell.TileSequence[0]:X2}\nCombinedByte: {cell.TileSequence[1]:X2}\nHeight: {cell.Height}";
                                     MessageBox.Show(debugMessage, "Debug Information", MessageBoxButton.OK, MessageBoxImage.Information);
                                 }
 
@@ -520,6 +595,7 @@ namespace UC_MapPainter
                                 cell.UpdateTileSequence(isDefaultTexture);
                                 fileBytes[index] = cell.TileSequence[0]; // textureByte
                                 fileBytes[index + 1] = cell.TileSequence[1]; // combinedByte
+                                fileBytes[index + 4] = (byte)cell.Height; // height
 
                                 // Skipping the remaining 4 bytes of the 6-byte sequence
                                 index += 6;
@@ -544,8 +620,6 @@ namespace UC_MapPainter
                 MessageBox.Show($"Map saved to {userFilePath} and {exportFilePath}", "Save Successful", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
-
-
 
         private void ZoomIn_Click(object sender, RoutedEventArgs e)
         {
@@ -594,7 +668,7 @@ namespace UC_MapPainter
                         var imageSource = new BitmapImage(new Uri(texturePath));
                         var rect = new Rect(cell.Column * cellSize, cell.Row * cellSize, cellSize, cellSize);
 
-                        drawingContext.PushTransform(new RotateTransform(cell.Rotation, rect.X + cellSize / 2, rect.Y + cellSize / 2));
+                        drawingContext.PushTransform(new RotateTransform(cell.Rotation + 180, rect.X + cellSize / 2, rect.Y + cellSize / 2));
                         drawingContext.DrawImage(imageSource, rect);
                         drawingContext.Pop();
                     }
@@ -613,6 +687,43 @@ namespace UC_MapPainter
             MessageBox.Show($"Map exported to {filePath}", "Export Successful", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
+        public void UpdateSelectedTexture(ImageSource newTexture, string type, int number)
+        {
+            SelectedTextureImage.Source = newTexture;
+            selectedTextureType = type;
+            selectedTextureNumber = number;
+            selectedTextureRotation = 0; // Reset rotation when a new texture is selected
+
+            // Apply rotation
+            ApplyRotation();
+        }
+
+        private void RotateLeft_Click(object sender, RoutedEventArgs e)
+        {
+            selectedTextureRotation = (selectedTextureRotation - 90) % 360;
+            if (selectedTextureRotation < 0)
+            {
+                selectedTextureRotation += 360;
+            }
+            ApplyRotation();
+        }
+
+        private void RotateRight_Click(object sender, RoutedEventArgs e)
+        {
+            selectedTextureRotation = (selectedTextureRotation + 90) % 360;
+            ApplyRotation();
+        }
+
+        private void ApplyRotation()
+        {
+            var transform = new RotateTransform(selectedTextureRotation)
+            {
+                CenterX = SelectedTextureImage.Width / 2,
+                CenterY = SelectedTextureImage.Height / 2
+            };
+            SelectedTextureImage.RenderTransform = transform;
+        }
+
         private string GetTexturePath(string textureType, int textureNumber)
         {
             string textureFolder = textureType == "world" ? $"world{selectedWorldNumber}" : textureType;
@@ -622,6 +733,96 @@ namespace UC_MapPainter
         private void Exit_Click(object sender, RoutedEventArgs e)
         {
             Application.Current.Shutdown();
+        }
+
+        private void EditTextureButton_Click(object sender, RoutedEventArgs e)
+        {
+            SetEditMode("Textures");
+        }
+
+        private void EditHeightButton_Click(object sender, RoutedEventArgs e)
+        {
+            SetEditMode("Height");
+        }
+
+        private void SetEditMode(string mode)
+        {
+            EditTextureButton.IsEnabled = true;
+            EditHeightButton.IsEnabled = true;
+            EditBuildingsButton.IsEnabled = false;
+
+            switch (mode)
+            {
+                case "Textures":
+                    EditTextureButton.IsEnabled = false;
+                    IsEditMode = false;
+                    break;
+                case "Height":
+                    EditHeightButton.IsEnabled = false;
+                    IsEditMode = true;
+                    break;
+                case "Buildings":
+                    EditBuildingsButton.IsEnabled = false;
+                    IsEditMode = false;
+                    break;
+                default:
+                    break;
+            }
+
+            UpdateCellDisplayAsync();
+        }
+
+        private async void UpdateCellDisplayAsync()
+        {
+            var generatingMapWindow = new GeneratingMapWindow();
+            generatingMapWindow.Owner = this;
+            generatingMapWindow.Show();
+
+            ProgressBar.Visibility = Visibility.Visible;
+
+            ProgressBar.Maximum = 128 * 128;
+            ProgressBar.Value = 0;
+
+            int cellCount = 0;
+
+            foreach (var cell in MainContentGrid.Children.OfType<Border>())
+            {
+                var cellData = gridModel.Cells.FirstOrDefault(c => Grid.GetRow(cell) == 127 - c.Row && Grid.GetColumn(cell) == 127 - c.Column);
+                if (cellData != null)
+                {
+                    if (IsEditMode)
+                    {
+                        var textBlock = new TextBlock
+                        {
+                            Text = cellData.Height.ToString(),
+                            Foreground = Brushes.Red,
+                            FontWeight = FontWeights.Bold,
+                            Margin = new Thickness(0, 0, 5, 5),
+                            HorizontalAlignment = HorizontalAlignment.Right,
+                            VerticalAlignment = VerticalAlignment.Bottom
+                        };
+                        cell.Child = textBlock;
+                    }
+                    else
+                    {
+                        cell.Child = null;
+                    }
+                }
+
+                cellCount++;
+
+                // Update progress every 128 cells
+                if (cellCount % 128 == 0)
+                {
+                    ProgressBar.Value = cellCount;
+                    await Task.Delay(1); // Yield to UI thread
+                }
+            }
+
+            ProgressBar.Value = 128 * 128; // Ensure progress bar is complete
+            ProgressBar.Visibility = Visibility.Collapsed;
+
+            generatingMapWindow.Close();
         }
     }
 }

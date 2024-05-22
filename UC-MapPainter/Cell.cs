@@ -8,6 +8,7 @@
         public int TextureNumber { get; set; }
         public int Rotation { get; set; }
         public byte[] TileSequence { get; set; } = new byte[6];
+        public int Height { get; set; } = 0; // Default height is 0
 
         public void UpdateTileSequence(bool isDefaultTexture)
         {
@@ -65,8 +66,8 @@
             TileSequence[1] = combinedByte;
             TileSequence[2] = 0x00;
             TileSequence[3] = 0x00;
-            TileSequence[4] = 0x00;
-            TileSequence[5] = 0x00;
+            TileSequence[4] = (byte)Height; // Store the height in the 5th byte
+            TileSequence[5] = 0x00; // This is the 6th byte and can be used for other purposes if needed
         }
     }
 }
