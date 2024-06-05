@@ -15,13 +15,18 @@
             <MenuItem Header="Window">
                 <MenuItem Header="Texture Selection" Click="TextureSelection_Click" x:Name="TextureSelectionMenuItem"/>
             </MenuItem>
+            <MenuItem Header="Debug">
+                <MenuItem Header="Show ObOb Info" Click="ShowObObInfo_Click"/>
+                <MenuItem Header="Show MapWho Info" Click="ShowMapWhoInfo_Click"/>
+                <MenuItem Header="Draw MapWho Grid" Click="ToggleMapWhoGridMenuItem_Click" x:Name="ToggleMapWhoGridMenuItem"/>
+            </MenuItem>
         </Menu>
         <Grid DockPanel.Dock="Top" Height="100" Background="LightGray">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0">
                 <Label Content="Mouse Position: " />
                 <Label Name="MousePositionLabel" />
-                <Label Content="  Loaded File: " Margin="10,0,0,0"/>
-                <TextBlock Name="LoadedFilePathLabel" Text="None" />
+                <Label Content="Pixel Position: " />
+                <Label Name="PixelPositionLabel" />
             </StackPanel>
             <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="10,0">
                 <Label Content="Edit Mode" FontWeight="Bold" HorizontalAlignment="Center" />
@@ -29,7 +34,7 @@
                     <Button Content="Textures" Click="EditTextureButton_Click" x:Name="EditTextureButton" Width="75" Height="30" Margin="5,0"/>
                     <Button Content="Height" Click="EditHeightButton_Click" x:Name="EditHeightButton" Width="75" Height="30" Margin="5,0"/>
                     <Button Content="Buildings" IsEnabled="False" x:Name="EditBuildingsButton" Width="75" Height="30" Margin="5,0"/>
-                    <Button Content="Prims" IsEnabled="False" x:Name="EditPrimsButton" Width="75" Height="30" Margin="5,0"/>
+                    <Button Content="Prims" Click="EditPrimsButton_Click" x:Name="EditPrimsButton" Width="75" Height="30" Margin="5,0"/>
                 </StackPanel>
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="10,0">
@@ -45,7 +50,11 @@
         </Grid>
         <ProgressBar Name="ProgressBar" Height="20" DockPanel.Dock="Top" Margin="5,0"/>
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-            <Grid Name="MainContentGrid" MouseMove="MainContentGrid_MouseMove"/>
+            <Grid>
+                <Grid Name="MainContentGrid" MouseMove="MainContentGrid_MouseMove"/>
+                <Canvas Name="OverlayGrid" IsHitTestVisible="True"/>
+                <!-- Make the canvas hit-test visible -->
+            </Grid>
         </ScrollViewer>
     </DockPanel>
 </Window>

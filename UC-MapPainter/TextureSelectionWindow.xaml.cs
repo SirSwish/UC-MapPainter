@@ -161,6 +161,15 @@ namespace UC_MapPainter
             return -1; // Default or error value
         }
 
+        public string GetSelectedWorld()
+        {
+            if (WorldNumberComboBox.SelectedItem is ComboBoxItem selectedItem)
+            {
+                return selectedItem.Content.ToString();
+            }
+            return null;
+        }
+
         public bool IsWorldLocked
         {
             get { return _isWorldLocked; }
@@ -170,6 +179,12 @@ namespace UC_MapPainter
         {
             _isWorldLocked = true;
             WorldNumberComboBox.IsEnabled = false;
+        }
+
+        public void UnlockWorld()
+        {
+            _isWorldLocked = false;
+            WorldNumberComboBox.IsEnabled = true;
         }
 
         public void SetSelectedWorld(string world)

@@ -11,12 +11,14 @@
   <ItemGroup>
     <None Remove="Images\default.bmp" />
     <None Remove="Images\icon.ico" />
+    <None Remove="Images\noTile.bmp" />
     <None Remove="Map\default.iam" />
   </ItemGroup>
 
   <ItemGroup>
     <Resource Include="Images\default.bmp" />
     <Resource Include="Images\icon.ico" />
+    <Resource Include="Images\noTile.bmp" />
     <Resource Include="Map\default.iam" />
   </ItemGroup>
 

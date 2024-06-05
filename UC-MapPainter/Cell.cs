@@ -10,6 +10,7 @@
         public byte[] TileSequence { get; set; } = new byte[6];
         public int Height { get; set; } = 0; // Default height is 0
 
+
         public void UpdateTileSequence(bool isDefaultTexture)
         {
             byte textureByte = 0;

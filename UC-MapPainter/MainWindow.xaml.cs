@@ -8,7 +8,11 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Text;
 using Microsoft.Win32;
+using System.Windows.Shapes;
+using System.Reflection.Metadata;
+using Path = System.IO.Path;
 
 namespace UC_MapPainter
 {
@@ -23,12 +27,23 @@ namespace UC_MapPainter
         private int selectedTextureNumber;
         private int selectedTextureRotation = 0;
         public bool IsEditMode { get; private set; }
+        private List<ObOb> obObList; // Add this line to define obObList
+        private byte[] fileBytes; // Add this line
+        private bool isTextureSelectionLocked = false;
+        private string lockedWorld = null;
+        private Canvas MapWhoGridCanvas = new Canvas();
+        private bool isMapWhoGridVisible = false;
+
+
 
         public MainWindow()
         {
             InitializeComponent();
             this.Loaded += MainWindow_Loaded;
             MainContentGrid.LayoutTransform = scaleTransform;
+            MainContentGrid.MouseMove += MainContentGrid_MouseMove;
+            MapWhoGridCanvas.IsHitTestVisible = false;
+            MainContentGrid.Children.Add(MapWhoGridCanvas);
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -49,12 +64,24 @@ namespace UC_MapPainter
                 textureSelectionWindow.Show();
                 textureSelectionWindow.Owner = this; // Set the owner after showing the window
                 TextureSelectionMenuItem.IsEnabled = false; // Disable the menu item
+
+                // Restore lock status and selected world
+                if (isTextureSelectionLocked && lockedWorld != null)
+                {
+                    textureSelectionWindow.SetSelectedWorld(lockedWorld);
+                    textureSelectionWindow.LockWorld();
+                    textureSelectionWindow.LoadWorldTextures(lockedWorld);
+                }
             }
         }
 
         private void TextureSelectionWindow_Closed(object sender, EventArgs e)
         {
             TextureSelectionMenuItem.IsEnabled = true; // Enable the menu item when the window is closed
+
+            // Track lock status and selected world
+            isTextureSelectionLocked = textureSelectionWindow.IsWorldLocked;
+            lockedWorld = textureSelectionWindow.GetSelectedWorld();
         }
 
         private void TextureSelection_Click(object sender, RoutedEventArgs e)
@@ -64,11 +91,12 @@ namespace UC_MapPainter
 
         private async void NewMap_Click(object sender, RoutedEventArgs e)
         {
+            SetEditMode("Textures");
             var worldSelectionWindow = new WorldSelectionWindow();
             if (worldSelectionWindow.ShowDialog() == true)
             {
                 loadedFilePath = null; // Reset the loaded file path when creating a new map
-                LoadedFilePathLabel.Text = "None"; // Update label
+                UpdateWindowTitle("Untitled.iam"); // Update title to "New Map.iam"
                 string selectedWorld = worldSelectionWindow.SelectedWorld;
                 selectedWorldNumber = ExtractWorldNumber(selectedWorld);
 
@@ -77,6 +105,10 @@ namespace UC_MapPainter
                 var generatingMapWindow = new GeneratingMapWindow();
                 generatingMapWindow.Owner = this;
                 generatingMapWindow.Show();
+
+                // Clear the arrays
+                gridModel.ObObArray.Clear();
+                gridModel.MapWhoArray.Clear();
 
                 await InitializeMapGridAsync(selectedWorld);
 
@@ -108,8 +140,13 @@ namespace UC_MapPainter
         private async void LoadMapAsync(string filePath)
         {
             loadedFilePath = filePath; // Store the loaded file path
+            UpdateWindowTitle(Path.GetFileName(filePath));
+            fileBytes = File.ReadAllBytes(filePath); // Store file bytes
 
-            byte[] fileBytes = File.ReadAllBytes(filePath);
+            // Clear the arrays
+            gridModel.ObObArray.Clear();
+            gridModel.MapWhoArray.Clear();
+
 
             // Determine the world number from the specified offset (0x7D4 from the end of the file)
             int worldNumberOffset = fileBytes.Length - 0x7D4;
@@ -142,6 +179,11 @@ namespace UC_MapPainter
             generatingMapWindow.Owner = this;
             generatingMapWindow.Show();
 
+            // Extract OB_Ob and MapWho arrays
+            int saveType = BitConverter.ToInt32(fileBytes, 0);
+            int obSize1 = BitConverter.ToInt32(fileBytes, 4);
+            await InitializeObObAndMapWhoAsync(fileBytes, saveType, obSize1);
+
             // Load the cells
             await InitializeMapGridFromBytesAsync(fileBytes);
 
@@ -150,7 +192,13 @@ namespace UC_MapPainter
 
             SaveMenuItem.IsEnabled = true;
             ExportMenuItem.IsEnabled = true; // Enable the Export menu item
+            SetEditMode("Textures");
+
         }
+
+
+
+
 
         private async Task InitializeMapGridFromBytesAsync(byte[] fileBytes)
         {
@@ -178,6 +226,8 @@ namespace UC_MapPainter
                     byte textureByte = fileBytes[index];
                     byte combinedByte = fileBytes[index + 1];
                     sbyte heightByte = (sbyte)fileBytes[index + 4]; // Convert to signed byte
+                    byte[] tileBytes = new byte[6];
+                    Array.Copy(fileBytes, index, tileBytes, 0, 6);
                     index += 6; // Skip to the next 6-byte sequence
 
                     var cell = new Border
@@ -206,11 +256,11 @@ namespace UC_MapPainter
                             textureNumber = textureByte + 256;
                             break;
                         case "C":
-                            textureType = "prims";
+                            textureType = "shared/prims";
                             textureNumber = (sbyte)textureByte + 64;
                             break;
                         case "D":
-                            textureType = "prims";
+                            textureType = "shared/prims";
                             textureNumber = textureByte + 64;
                             break;
                         default:
@@ -235,7 +285,8 @@ namespace UC_MapPainter
                         TextureType = textureType,
                         TextureNumber = textureNumber,
                         Rotation = (int)rotation,
-                        Height = heightByte // Assign the height from the loaded byte as signed
+                        Height = heightByte, // Assign the height from the loaded byte as signed
+                        TileSequence = tileBytes // Store the tile bytes
                     };
                     gridModel.Cells.Add(cellData);
 
@@ -256,6 +307,8 @@ namespace UC_MapPainter
         }
 
 
+
+
         private async Task InitializeMapGridAsync(string selectedWorld)
         {
             MainContentGrid.Children.Clear();
@@ -270,7 +323,7 @@ namespace UC_MapPainter
             }
 
             string appBasePath = AppDomain.CurrentDomain.BaseDirectory;
-            string initialTexturePath = Path.Combine(appBasePath, "Textures", $"world{selectedWorldNumber}", "tex000hi.bmp");
+            string initialTexturePath = System.IO.Path.Combine(appBasePath, "Textures", $"world{selectedWorldNumber}", "tex000hi.bmp");
 
             var initialTexture = new ImageBrush
             {
@@ -406,7 +459,7 @@ namespace UC_MapPainter
                     if (cellData != null)
                     {
                         string textureFolder = cellData.TextureType == "world" ? $"world{selectedWorldNumber}" : cellData.TextureType;
-                        string texturePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Textures", textureFolder, $"tex{cellData.TextureNumber:D3}hi.bmp");
+                        string texturePath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Textures", textureFolder, $"tex{cellData.TextureNumber:D3}hi.bmp");
 
                         string debugMessage = $"Cell Debug Information:\n" +
                                               $"X: {col}\n" +
@@ -414,7 +467,8 @@ namespace UC_MapPainter
                                               $"Texture File Path: {texturePath}\n" +
                                               $"Texture Type: {cellData.TextureType}\n" +
                                               $"Rotation: {cellData.Rotation}°\n" +
-                                              $"Height: {cellData.Height}";
+                                              $"Height: {cellData.Height}\n" +
+                                              $"Tile Bytes: {BitConverter.ToString(cellData.TileSequence)}"; // Use the stored tile bytes
                         MessageBox.Show(debugMessage, "Cell Debug Information", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
                 }
@@ -449,6 +503,7 @@ namespace UC_MapPainter
             }
         }
 
+
         private void MainContentGrid_MouseMove(object sender, MouseEventArgs e)
         {
             var position = e.GetPosition(MainContentGrid);
@@ -458,8 +513,12 @@ namespace UC_MapPainter
 
             if (row >= 0 && row < 128 && col >= 0 && col < 128)
             {
-                MousePositionLabel.Content = $"X: {col}, Y: {row}";
+                MousePositionLabel.Content = $"X: {col}, Z: {row}";
             }
+
+            double pixelX = 8192 - position.X;
+            double pixelZ = 8192 - position.Y;
+            PixelPositionLabel.Content = $"Pixel: ({pixelX:F0}, {pixelZ:F0})";
         }
 
         private int ExtractWorldNumber(string world)
@@ -480,45 +539,51 @@ namespace UC_MapPainter
                 0 => "A",
                 1 => "B",
                 2 => "C",
-                3 => "D",
-                _ => null
+                3 => "D"
             };
         }
 
         private async Task PaintCell(Border cell, string textureType, int textureNumber, double rotation)
         {
             string textureFolder = textureType == "world" ? $"world{selectedWorldNumber}" : textureType;
-            string texturePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Textures", textureFolder, $"tex{textureNumber:D3}hi.bmp");
+            string texturePath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Textures", textureFolder, $"tex{textureNumber:D3}hi.bmp");
+
+            BitmapImage bitmapImage;
             if (File.Exists(texturePath))
             {
-                var imageBrush = new ImageBrush
-                {
-                    ImageSource = new BitmapImage(new Uri(texturePath)),
-                    Stretch = Stretch.None,
-                    AlignmentX = AlignmentX.Center,
-                    AlignmentY = AlignmentY.Center
-                };
-
-                var rotateTransform = new RotateTransform(rotation, 32, 32);
-
-                cell.Background = new VisualBrush
-                {
-                    Visual = new Image
-                    {
-                        Source = new BitmapImage(new Uri(texturePath)),
-                        RenderTransform = rotateTransform,
-                        RenderTransformOrigin = new Point(0.5, 0.5),
-                        Stretch = Stretch.Fill,
-                        Width = 64,
-                        Height = 64
-                    }
-                };
-
-                // Add debug statement for verification
-                string debugMessage = $"Painting cell ({Grid.GetColumn(cell)}, {Grid.GetRow(cell)}):\nTexturePath: {texturePath}\nRotation: {rotation}°";
-                // MessageBox.Show(debugMessage, "Debug Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                bitmapImage = new BitmapImage(new Uri(texturePath));
             }
+            else
+            {
+                // Load the resource image
+                Uri resourceUri = new Uri("pack://application:,,,/Images/noTile.bmp", UriKind.Absolute);
+                bitmapImage = new BitmapImage(resourceUri);
+            }
+
+            var imageBrush = new ImageBrush
+            {
+                ImageSource = bitmapImage,
+                Stretch = Stretch.None,
+                AlignmentX = AlignmentX.Center,
+                AlignmentY = AlignmentY.Center
+            };
+
+            var rotateTransform = new RotateTransform(rotation, 32, 32);
+
+            cell.Background = new VisualBrush
+            {
+                Visual = new Image
+                {
+                    Source = bitmapImage,
+                    RenderTransform = rotateTransform,
+                    RenderTransformOrigin = new Point(0.5, 0.5),
+                    Stretch = Stretch.Fill,
+                    Width = 64,
+                    Height = 64
+                }
+            };
         }
+
 
         private void SaveMap_Click(object sender, RoutedEventArgs e)
         {
@@ -547,7 +612,7 @@ namespace UC_MapPainter
                 }
 
                 // Use the loaded file path as the template if a map was loaded, otherwise use default.iam
-                string templateFilePath = loadedFilePath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Map", "default.iam");
+                string templateFilePath = loadedFilePath ?? System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Map", "default.iam");
                 byte[] fileBytes = File.ReadAllBytes(templateFilePath);
 
                 // Determine the save order based on whether the default template or a loaded template is used
@@ -613,9 +678,9 @@ namespace UC_MapPainter
                 File.WriteAllBytes(userFilePath, fileBytes);
 
                 // Save the modified file to the "Exported" folder
-                string exportFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Exported");
+                string exportFolder = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Exported");
                 Directory.CreateDirectory(exportFolder);
-                string exportFilePath = Path.Combine(exportFolder, Path.GetFileName(userFilePath));
+                string exportFilePath = System.IO.Path.Combine(exportFolder, System.IO.Path.GetFileName(userFilePath));
                 File.WriteAllBytes(exportFilePath, fileBytes);
 
                 MessageBox.Show($"Map saved to {userFilePath} and {exportFilePath}", "Save Successful", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -728,7 +793,7 @@ namespace UC_MapPainter
         private string GetTexturePath(string textureType, int textureNumber)
         {
             string textureFolder = textureType == "world" ? $"world{selectedWorldNumber}" : textureType;
-            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Textures", textureFolder, $"tex{textureNumber:D3}hi.bmp");
+            return System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Textures", textureFolder, $"tex{textureNumber:D3}hi.bmp");
         }
 
         private void Exit_Click(object sender, RoutedEventArgs e)
@@ -750,21 +815,33 @@ namespace UC_MapPainter
         {
             EditTextureButton.IsEnabled = true;
             EditHeightButton.IsEnabled = true;
-            EditBuildingsButton.IsEnabled = false;
+            EditBuildingsButton.IsEnabled = true;
+            EditPrimsButton.IsEnabled = true;
 
             switch (mode)
             {
                 case "Textures":
                     EditTextureButton.IsEnabled = false;
                     IsEditMode = false;
+                    OverlayGrid.Visibility = Visibility.Collapsed;
                     break;
                 case "Height":
                     EditHeightButton.IsEnabled = false;
                     IsEditMode = true;
+                    OverlayGrid.Visibility = Visibility.Collapsed;
+                    ClearSelectedTexture(); // Clear the selected texture
                     break;
                 case "Buildings":
                     EditBuildingsButton.IsEnabled = false;
                     IsEditMode = false;
+                    OverlayGrid.Visibility = Visibility.Collapsed;
+                    ClearSelectedTexture(); // Clear the selected texture
+                    break;
+                case "Prims":
+                    EditPrimsButton.IsEnabled = false;
+                    IsEditMode = false;
+                    OverlayGrid.Visibility = Visibility.Visible;
+                    ClearSelectedTexture(); // Clear the selected texture
                     break;
                 default:
                     break;
@@ -772,6 +849,7 @@ namespace UC_MapPainter
 
             UpdateCellDisplayAsync();
         }
+
 
         private async void UpdateCellDisplayAsync()
         {
@@ -825,5 +903,296 @@ namespace UC_MapPainter
 
             generatingMapWindow.Close();
         }
-    }
+        private void ShowScrollablePopup(string title, string content)
+        {
+            var textBox = new TextBox
+            {
+                Text = content,
+                IsReadOnly = true,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                TextWrapping = TextWrapping.Wrap
+            };
+
+            var scrollViewer = new ScrollViewer
+            {
+                Content = textBox,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Width = 400,
+                Height = 300
+            };
+
+            var window = new Window
+            {
+                Title = title,
+                Content = scrollViewer,
+                Width = 450,
+                Height = 350
+            };
+
+            window.ShowDialog();
+        }
+
+        private void ShowObObInfo()
+        {
+            var sb = new StringBuilder();
+            foreach (var ob in gridModel.ObObArray)
+            {
+                sb.AppendLine($"Y: {ob.Y}, X: {ob.X}, Z: {ob.Z}, Prim: {ob.Prim} ({ob.DisplayName}), Yaw: {ob.Yaw}, Flags: {ob.Flags}, InsideIndex: {ob.InsideIndex}");
+            }
+
+            ShowScrollablePopup("Ob_Ob Information", sb.ToString());
+        }
+
+        private void ShowMapWhoInfo()
+        {
+            var sb = new StringBuilder();
+            foreach (var mw in gridModel.MapWhoArray)
+            {
+                sb.AppendLine($"Index: {mw.Index}, Num: {mw.Num}");
+            }
+
+            ShowScrollablePopup("MapWho Information", sb.ToString());
+        }
+
+
+        private async Task InitializeObObAndMapWhoAsync(byte[] fileBytes, int saveType, int obSize1)
+        {
+            gridModel.ObObArray.Clear();
+            gridModel.MapWhoArray.Clear();
+
+            int fileSize = fileBytes.Length;
+            int size = fileSize - 12;
+
+            if (saveType >= 25)
+            {
+                size -= 2000;  // Adjust for texture data
+            }
+
+            size -= obSize1;  // Subtract the object size
+            int obObUptoOffset = size + 8;
+            int obObUpto = BitConverter.ToInt32(fileBytes, obObUptoOffset);
+
+            // Read OB_Ob array
+            for (int i = 0; i < obObUpto; i++)
+            {
+                int index = obObUptoOffset + 4 + (i * 8);
+                var obOb = new ObOb
+                {
+                    Y = BitConverter.ToInt16(fileBytes, index),
+                    X = fileBytes[index + 2],
+                    Z = fileBytes[index + 3],
+                    Prim = fileBytes[index + 4],
+                    Yaw = fileBytes[index + 5],
+                    Flags = fileBytes[index + 6],
+                    InsideIndex = fileBytes[index + 7]
+                };
+                gridModel.ObObArray.Add(obOb);
+            }
+
+            // Read OB_Mapwho array
+            int mapWhoOffset = obObUptoOffset + 4 + (obObUpto * 8);
+            for (int i = 0; i < 32 * 32; i++)
+            {
+                int index = mapWhoOffset + (i * 2);
+                ushort cell = BitConverter.ToUInt16(fileBytes, index);
+                var mapWho = new MapWho
+                {
+                    Index = cell & 0x07FF,
+                    Num = (cell >> 11) & 0x1F
+                };
+                gridModel.MapWhoArray.Add(mapWho);
+            }
+        }
+
+        private void ShowObObInfo_Click(object sender, RoutedEventArgs e)
+        {
+            ShowObObInfo();
+        }
+
+        private void ShowMapWhoInfo_Click(object sender, RoutedEventArgs e)
+        {
+            ShowMapWhoInfo();
+        }
+
+        private void EditPrimsButton_Click(object sender, RoutedEventArgs e)
+        {
+            SetEditMode("Prims");
+            DrawPrims();
+        }
+
+        private void DrawPrims()
+        {
+            OverlayGrid.Children.Clear(); // Clear existing objects
+            for (int mapWhoIndex = 0; mapWhoIndex < gridModel.MapWhoArray.Count; mapWhoIndex++)
+            {
+                var mapWho = gridModel.MapWhoArray[mapWhoIndex];
+                int mapWhoRow = mapWhoIndex / 32;
+                int mapWhoCol = mapWhoIndex % 32;
+
+                // Iterate through the number of objects in the MapWho cell
+                for (int i = 0; i < mapWho.Num; i++)
+                {
+                    var ob = gridModel.ObObArray[mapWho.Index + i];
+
+
+                    // Calculate the object's position within the MapWho cell
+                    int relativeX = ob.X & 0xFF;
+                    int relativeZ = ob.Z & 0xFF;
+
+                    // Calculate the start pixel coordinates of the MapWho cell within the 8192x8192 grid
+                    int startX = 8192 - (mapWhoRow * 256);
+                    int startZ = 8192 - (mapWhoCol * 256);
+
+                    // Calculate the overall pixel coordinates within the 8192x8192 grid
+                    int pixelX = startX - relativeX;
+                    int pixelZ = startZ - relativeZ;
+
+                    // Calculate the global tile coordinates within the 128x128 grid
+                    int globalTileX = mapWhoCol * 4 + (relativeX / 64);
+                    int globalTileZ = mapWhoRow * 4 + (relativeZ / 64);
+
+                    // Calculate the correct orientation
+                    int finalPixelX = pixelX;
+                    int finalPixelZ = pixelZ;
+
+
+                    var ellipse = new Ellipse
+                    {
+                        Width = 15,
+                        Height = 15,
+                        Fill = Brushes.Red,
+                        Stroke = Brushes.Black,
+                        StrokeThickness = 1
+                    };
+
+                    // Set the position of the ellipse within the 8192x8192 grid
+                    Canvas.SetLeft(ellipse, pixelX - ellipse.Width / 2);
+                    Canvas.SetTop(ellipse, pixelZ - ellipse.Height / 2);
+
+                    // Add click event handler for the ellipse
+                    ellipse.MouseLeftButtonDown += (s, e) => ShowPrimInfo(ob, mapWhoIndex, mapWhoRow, mapWhoCol, relativeX, relativeZ, globalTileX, globalTileZ, pixelX, pixelZ);
+
+                    OverlayGrid.Children.Add(ellipse);
+
+                    var arrow = new Polygon
+                    {
+                        Points = new PointCollection(new List<Point> { new Point(0, -5), new Point(2, -2), new Point(-2, -2) }),
+                        Fill = Brushes.Black,
+                        Stroke = Brushes.Black,
+                        StrokeThickness = 2,
+                        RenderTransform = new RotateTransform((ob.Yaw / 255.0) * 360, 0, 0)
+                    };
+
+                    // Set the position of the arrow within the 8192x8192 grid
+                    Canvas.SetLeft(arrow, pixelX);
+                    Canvas.SetTop(arrow, pixelZ);
+                    OverlayGrid.Children.Add(arrow);
+                }
+            }
+        }
+
+        private void ShowPrimInfo(ObOb ob, int mapWhoIndex, int mapWhoRow, int mapWhoCol, int relativeX, int relativeZ, int globalTileX, int globalTileZ, int pixelX, int pixelZ)
+        {
+            string objectInfo = $"MapWho Index: {mapWhoIndex}\n" +
+                                $"MapWho Cell: [{mapWhoRow}, {mapWhoCol}]\n" +
+                                $"X Position in MapWho: {relativeX}\n" +
+                                $"Z Position in MapWho: {relativeZ}\n" +
+                                $"Y: {ob.Y}\n" +
+                                $"Prim: {ob.Prim} ({ob.DisplayName})\n" +
+                                $"Yaw: {ob.Yaw}\n" +
+                                $"Flags: {ob.Flags}\n" +
+                                $"InsideIndex: {ob.InsideIndex}\n" +
+                                $"Calculated Tile Position: TileX = {globalTileX}, TileZ = {globalTileZ}\n" +
+                                $"Calculated Pixel Position: PixelX = {8192 - pixelX}, PixelZ = {8192 - pixelZ}";
+            MessageBox.Show(objectInfo, "Prim Information", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        private void ClearSelectedTexture()
+        {
+            SelectedTextureImage.Source = null;
+            selectedTextureType = string.Empty;
+            selectedTextureNumber = -1;
+            selectedTextureRotation = 0;
+        }
+
+        private void UpdateWindowTitle(string fileName)
+        {
+            this.Title = $"Urban Chaos Map Editor - {fileName}";
+        }
+
+        private void DrawMapWhoGrid()
+        {
+            MapWhoGridCanvas.Children.Clear();
+
+            for (int i = 0; i <= 128; i += 4)
+            {
+                // Vertical lines
+                var verticalLine = new Line
+                {
+                    Stroke = Brushes.Red,
+                    StrokeThickness = 3,
+                    X1 = i * 64,
+                    Y1 = 0,
+                    X2 = i * 64,
+                    Y2 = 128 * 64
+                };
+                MapWhoGridCanvas.Children.Add(verticalLine);
+
+                // Horizontal lines
+                var horizontalLine = new Line
+                {
+                    Stroke = Brushes.Red,
+                    StrokeThickness = 1,
+                    X1 = 0,
+                    Y1 = i * 64,
+                    X2 = 128 * 64,
+                    Y2 = i * 64
+                };
+                MapWhoGridCanvas.Children.Add(horizontalLine);
+            }
+
+            // Add labels
+            for (int row = 0; row < 32; row++)
+            {
+                for (int col = 0; col < 32; col++)
+                {
+                    int index = (31 - row) * 32 + (31 - col); // Reverse the index calculation
+                    var label = new TextBlock
+                    {
+                        Text = $"Index: {index}\nRow: {31 - row}\nCol: {31 - col}",
+                        Foreground = Brushes.Red,
+                        FontSize = 10,
+                        FontWeight = FontWeights.Bold,
+                        Background = new SolidColorBrush(Color.FromArgb(128, 255, 255, 255)) // Semi-transparent background
+                    };
+                    Canvas.SetLeft(label, col * 4 * 64 + 2); // Adjust position slightly to avoid overlap with the grid lines
+                    Canvas.SetTop(label, row * 4 * 64 + 2);
+                    MapWhoGridCanvas.Children.Add(label);
+                }
+            }
+
+            EnsureMapWhoGridCanvasOnTop();
+        }
+
+            private void ToggleMapWhoGridMenuItem_Click(object sender, RoutedEventArgs e)
+            {
+                if (isMapWhoGridVisible)
+                {
+                    MapWhoGridCanvas.Children.Clear();
+                    ToggleMapWhoGridMenuItem.Header = "Draw MapWho Grid";
+                }
+                else
+                {
+                    DrawMapWhoGrid();
+                    ToggleMapWhoGridMenuItem.Header = "Hide MapWho Grid";
+                }
+                isMapWhoGridVisible = !isMapWhoGridVisible;
+            }
+            private void EnsureMapWhoGridCanvasOnTop()
+            {
+                MainContentGrid.Children.Remove(MapWhoGridCanvas);
+                MainContentGrid.Children.Add(MapWhoGridCanvas);
+            }
+        }
 }
