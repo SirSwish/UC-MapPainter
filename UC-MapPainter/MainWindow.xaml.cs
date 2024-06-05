@@ -33,6 +33,11 @@ namespace UC_MapPainter
         private string lockedWorld = null;
         private Canvas MapWhoGridCanvas = new Canvas();
         private bool isMapWhoGridVisible = false;
+        private PrimSelectionWindow primSelectionWindow;
+        private int selectedPrimNumber = -1;
+        private string currentEditMode;
+
+
 
 
 
@@ -50,6 +55,31 @@ namespace UC_MapPainter
         {
             InitializeTextureSelectionWindow();
             SetEditMode("Textures");
+        }
+
+        private void PrimSelection_Click(object sender, RoutedEventArgs e)
+        {
+            InitializePrimSelectionWindow();
+        }
+
+        private void InitializePrimSelectionWindow()
+        {
+            if (primSelectionWindow == null || !primSelectionWindow.IsLoaded)
+            {
+                primSelectionWindow = new PrimSelectionWindow();
+                primSelectionWindow.SetMainWindow(this);
+                primSelectionWindow.Left = this.Left + this.Width - primSelectionWindow.Width - 10;
+                primSelectionWindow.Top = 50;
+                primSelectionWindow.Closed += PrimSelectionWindow_Closed;
+                primSelectionWindow.Show();
+                primSelectionWindow.Owner = this; // Set the owner after showing the window
+                PrimSelectionMenuItem.IsEnabled = false; // Disable the menu item
+            }
+        }
+
+        private void PrimSelectionWindow_Closed(object sender, EventArgs e)
+        {
+            PrimSelectionMenuItem.IsEnabled = true; // Enable the menu item when the window is closed
         }
 
         private void InitializeTextureSelectionWindow()
@@ -380,35 +410,40 @@ namespace UC_MapPainter
         {
             if (sender is Border cell)
             {
-                int row = 127 - Grid.GetRow(cell);
-                int col = 127 - Grid.GetColumn(cell);
+                var position = e.GetPosition(MainContentGrid);
+                int pixelX = (int)position.X;
+                int pixelZ = (int)position.Y;
 
-                var cellData = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
-                if (cellData != null)
+                if (currentEditMode == "Prims" && selectedPrimNumber != -1)
                 {
-                    if (IsEditMode)
+                    var ellipse = new Ellipse
                     {
-                        int increment = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift) ? 10 : 1;
-                        cellData.Height = Math.Min(cellData.Height + increment, 127);
+                        Width = 15,
+                        Height = 15,
+                        Fill = Brushes.Blue,
+                        Stroke = Brushes.Black,
+                        StrokeThickness = 1
+                    };
 
-                        if (cell.Child is TextBlock textBlock)
-                        {
-                            textBlock.Text = cellData.Height.ToString();
-                        }
-                        else
-                        {
-                            cell.Child = new TextBlock
-                            {
-                                Text = cellData.Height.ToString(),
-                                Foreground = Brushes.Red,
-                                FontWeight = FontWeights.Bold,
-                                Margin = new Thickness(0, 0, 5, 5),
-                                HorizontalAlignment = HorizontalAlignment.Right,
-                                VerticalAlignment = VerticalAlignment.Bottom
-                            };
-                        }
+                    Canvas.SetLeft(ellipse, pixelX - ellipse.Width / 2);
+                    Canvas.SetTop(ellipse, pixelZ - ellipse.Height / 2);
+
+                    OverlayGrid.Children.Add(ellipse);
+
+                    // Reset the selected prim
+                    selectedPrimNumber = -1;
+                    if (primSelectionWindow != null && primSelectionWindow.IsLoaded)
+                    {
+                        primSelectionWindow.UpdateSelectedPrimImage(-1); // Clear the selected prim image
                     }
-                    else
+                }
+                else if (currentEditMode == "Textures")
+                {
+                    int row = 127 - Grid.GetRow(cell);
+                    int col = 127 - Grid.GetColumn(cell);
+
+                    var cellData = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
+                    if (cellData != null)
                     {
                         if (SelectedTextureImage.Source != null)
                         {
@@ -445,6 +480,8 @@ namespace UC_MapPainter
                 }
             }
         }
+
+
 
         private void Cell_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -813,6 +850,8 @@ namespace UC_MapPainter
 
         private void SetEditMode(string mode)
         {
+            currentEditMode = mode;
+
             EditTextureButton.IsEnabled = true;
             EditHeightButton.IsEnabled = true;
             EditBuildingsButton.IsEnabled = true;
@@ -842,6 +881,7 @@ namespace UC_MapPainter
                     IsEditMode = false;
                     OverlayGrid.Visibility = Visibility.Visible;
                     ClearSelectedTexture(); // Clear the selected texture
+                    InitializePrimSelectionWindow(); // Open the Prim Selection Window
                     break;
                 default:
                     break;
@@ -849,6 +889,7 @@ namespace UC_MapPainter
 
             UpdateCellDisplayAsync();
         }
+
 
 
         private async void UpdateCellDisplayAsync()
@@ -1019,6 +1060,7 @@ namespace UC_MapPainter
         private void EditPrimsButton_Click(object sender, RoutedEventArgs e)
         {
             SetEditMode("Prims");
+            InitializePrimSelectionWindow();
             DrawPrims();
         }
 
@@ -1175,24 +1217,33 @@ namespace UC_MapPainter
             EnsureMapWhoGridCanvasOnTop();
         }
 
-            private void ToggleMapWhoGridMenuItem_Click(object sender, RoutedEventArgs e)
+        private void ToggleMapWhoGridMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (isMapWhoGridVisible)
             {
-                if (isMapWhoGridVisible)
-                {
-                    MapWhoGridCanvas.Children.Clear();
-                    ToggleMapWhoGridMenuItem.Header = "Draw MapWho Grid";
-                }
-                else
-                {
-                    DrawMapWhoGrid();
-                    ToggleMapWhoGridMenuItem.Header = "Hide MapWho Grid";
-                }
-                isMapWhoGridVisible = !isMapWhoGridVisible;
+                MapWhoGridCanvas.Children.Clear();
+                ToggleMapWhoGridMenuItem.Header = "Draw MapWho Grid";
             }
-            private void EnsureMapWhoGridCanvasOnTop()
+            else
             {
-                MainContentGrid.Children.Remove(MapWhoGridCanvas);
-                MainContentGrid.Children.Add(MapWhoGridCanvas);
+                DrawMapWhoGrid();
+                ToggleMapWhoGridMenuItem.Header = "Hide MapWho Grid";
+            }
+            isMapWhoGridVisible = !isMapWhoGridVisible;
+        }
+        private void EnsureMapWhoGridCanvasOnTop()
+        {
+            MainContentGrid.Children.Remove(MapWhoGridCanvas);
+            MainContentGrid.Children.Add(MapWhoGridCanvas);
+        }
+        public void UpdateSelectedPrim(int primNumber)
+        {
+            selectedPrimNumber = primNumber;
+            // If there is a SelectedPrimImage control in PrimSelectionWindow, update it
+            if (primSelectionWindow != null && primSelectionWindow.IsLoaded)
+            {
+                primSelectionWindow.UpdateSelectedPrimImage(primNumber);
             }
         }
+    }
 }

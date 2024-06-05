@@ -1,7 +1,7 @@
 ﻿<Window x:Class="UC_MapPainter.WorldSelectionWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Select World" Height="150" Width="300">
+        Title="Select World" Height="150" Width="300" WindowStyle="ToolWindow">
     <StackPanel Margin="10">
         <TextBlock Text="Select a World:" Margin="0,0,0,10"/>
         <ComboBox Name="WorldComboBox" Margin="0,0,0,10">

@@ -14,6 +14,7 @@
             </MenuItem>
             <MenuItem Header="Window">
                 <MenuItem Header="Texture Selection" Click="TextureSelection_Click" x:Name="TextureSelectionMenuItem"/>
+                <MenuItem x:Name="PrimSelectionMenuItem" Header="Prim Selection" Click="PrimSelection_Click"/>
             </MenuItem>
             <MenuItem Header="Debug">
                 <MenuItem Header="Show ObOb Info" Click="ShowObObInfo_Click"/>
