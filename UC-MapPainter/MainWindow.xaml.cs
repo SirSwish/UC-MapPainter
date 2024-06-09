@@ -1067,6 +1067,9 @@ namespace UC_MapPainter
         private void DrawPrims()
         {
             OverlayGrid.Children.Clear(); // Clear existing objects
+            string appBasePath = AppDomain.CurrentDomain.BaseDirectory;
+            string topPrimsFolder = Path.Combine(appBasePath, "Prims", "TopPrims");
+
             for (int mapWhoIndex = 0; mapWhoIndex < gridModel.MapWhoArray.Count; mapWhoIndex++)
             {
                 var mapWho = gridModel.MapWhoArray[mapWhoIndex];
@@ -1077,7 +1080,6 @@ namespace UC_MapPainter
                 for (int i = 0; i < mapWho.Num; i++)
                 {
                     var ob = gridModel.ObObArray[mapWho.Index + i];
-
 
                     // Calculate the object's position within the MapWho cell
                     int relativeX = ob.X & 0xFF;
@@ -1099,6 +1101,31 @@ namespace UC_MapPainter
                     int finalPixelX = pixelX;
                     int finalPixelZ = pixelZ;
 
+                    // Load the corresponding prim image from the TopPrims folder
+                    string primImagePath = Path.Combine(topPrimsFolder, $"{ob.Prim}.png");
+                    if (File.Exists(primImagePath))
+                    {
+                        var primImage = new Image
+                        {
+                            Source = new BitmapImage(new Uri(primImagePath))
+                        };
+
+                        // Apply rotation based on the Yaw property
+                        double rotationAngle = -((ob.Yaw / 255.0) * 360);
+                        var rotateTransform = new RotateTransform(rotationAngle);
+                        primImage.RenderTransform = rotateTransform;
+                        primImage.RenderTransformOrigin = new Point(0.5, 0.5); // Center the rotation
+
+                        // Ensure the image is measured and arranged before positioning
+                        primImage.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                        primImage.Arrange(new Rect(0, 0, primImage.DesiredSize.Width, primImage.DesiredSize.Height));
+
+                        // Set the position of the image within the 8192x8192 grid, centered at the specified point
+                        Canvas.SetLeft(primImage, finalPixelX - primImage.DesiredSize.Width / 2);
+                        Canvas.SetTop(primImage, finalPixelZ - primImage.DesiredSize.Height / 2);
+                        OverlayGrid.Children.Add(primImage);
+                        Canvas.SetZIndex(primImage, 0); // Ensure image is below ellipses
+                    }
 
                     var ellipse = new Ellipse
                     {
@@ -1110,30 +1137,21 @@ namespace UC_MapPainter
                     };
 
                     // Set the position of the ellipse within the 8192x8192 grid
-                    Canvas.SetLeft(ellipse, pixelX - ellipse.Width / 2);
-                    Canvas.SetTop(ellipse, pixelZ - ellipse.Height / 2);
+                    Canvas.SetLeft(ellipse, finalPixelX - ellipse.Width / 2);
+                    Canvas.SetTop(ellipse, finalPixelZ - ellipse.Height / 2);
+
+                    // Ensure the ellipse is on top
+                    Canvas.SetZIndex(ellipse, 1);
 
                     // Add click event handler for the ellipse
-                    ellipse.MouseLeftButtonDown += (s, e) => ShowPrimInfo(ob, mapWhoIndex, mapWhoRow, mapWhoCol, relativeX, relativeZ, globalTileX, globalTileZ, pixelX, pixelZ);
+                    ellipse.MouseLeftButtonDown += (s, e) => ShowPrimInfo(ob, mapWhoIndex, mapWhoRow, mapWhoCol, relativeX, relativeZ, globalTileX, globalTileZ, finalPixelX, finalPixelZ);
 
+                    // Ensure the ellipse is added after the image, making it on top
                     OverlayGrid.Children.Add(ellipse);
-
-                    var arrow = new Polygon
-                    {
-                        Points = new PointCollection(new List<Point> { new Point(0, -5), new Point(2, -2), new Point(-2, -2) }),
-                        Fill = Brushes.Black,
-                        Stroke = Brushes.Black,
-                        StrokeThickness = 2,
-                        RenderTransform = new RotateTransform((ob.Yaw / 255.0) * 360, 0, 0)
-                    };
-
-                    // Set the position of the arrow within the 8192x8192 grid
-                    Canvas.SetLeft(arrow, pixelX);
-                    Canvas.SetTop(arrow, pixelZ);
-                    OverlayGrid.Children.Add(arrow);
                 }
             }
         }
+
 
         private void ShowPrimInfo(ObOb ob, int mapWhoIndex, int mapWhoRow, int mapWhoCol, int relativeX, int relativeZ, int globalTileX, int globalTileZ, int pixelX, int pixelZ)
         {
@@ -1245,5 +1263,12 @@ namespace UC_MapPainter
                 primSelectionWindow.UpdateSelectedPrimImage(primNumber);
             }
         }
+
+        public int SelectedPrimNumber
+        {
+            get { return selectedPrimNumber; }
+            set { selectedPrimNumber = value; }
+        }
+
     }
 }

@@ -22,4 +22,8 @@
     <Resource Include="Map\default.iam" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Textures\world2\" />
+  </ItemGroup>
+
 </Project>

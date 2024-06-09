@@ -1,4 +1,6 @@
-﻿using System.Windows;
+﻿using System;
+using System.IO;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -13,46 +15,89 @@ namespace UC_MapPainter
         public PrimSelectionWindow()
         {
             InitializeComponent();
-            LoadPrims();
+            this.Loaded += PrimSelectionWindow_Loaded;
+        }
+
+        private void PrimSelectionWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            LoadPrimButtons();
+        }
+        private void LoadPrimButtons()
+        {
+            string appBasePath = AppDomain.CurrentDomain.BaseDirectory;
+            string buttonPrimsFolder = Path.Combine(appBasePath, "Prims", "ButtonPrims");
+
+            for (int i = 1; i <= 255; i++) // Note: start from 1 as there is no 000.png
+            {
+                string primFilePath = Path.Combine(buttonPrimsFolder, $"{i:D3}.png");
+                if (File.Exists(primFilePath))
+                {
+                    var button = new Button
+                    {
+                        Content = new Image
+                        {
+                            Source = new BitmapImage(new Uri(primFilePath)),
+                            Width = 64,
+                            Height = 64
+                        },
+                        Width = 64,
+                        Height = 64,
+                        Tag = i // Store the prim number in the Tag property
+                    };
+                    button.Click += PrimButton_Click;
+                    PrimGrid.Children.Add(button);
+                }
+            }
+        }
+
+        private void PrimButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is int primNumber)
+            {
+                _mainWindow.SelectedPrimNumber = primNumber;
+                UpdateSelectedPrimTopImage(primNumber);
+            }
+        }
+
+        public void UpdateSelectedPrimTopImage(int primNumber)
+        {
+            if (primNumber == -1)
+            {
+                SelectedPrimImage.Source = null;
+            }
+            else
+            {
+                string appBasePath = AppDomain.CurrentDomain.BaseDirectory;
+                string topPrimImagePath = Path.Combine(appBasePath, "Prims", "TopPrims", $"{primNumber}.png");
+                if (File.Exists(topPrimImagePath))
+                {
+                    var bitmap = new BitmapImage(new Uri(topPrimImagePath));
+                    SelectedPrimImage.Source = bitmap;
+                }
+            }
+        }
+
+        public void UpdateSelectedPrimImage(int primNumber)
+        {
+            if (primNumber == -1)
+            {
+                SelectedPrimImage.Source = null;
+            }
+            else
+            {
+                string appBasePath = AppDomain.CurrentDomain.BaseDirectory;
+                string primImagePath = Path.Combine(appBasePath, "Prims", "ButtonPrims", $"{primNumber:D3}.png");
+                if (File.Exists(primImagePath))
+                {
+                    var bitmap = new BitmapImage(new Uri(primImagePath));
+                    SelectedPrimImage.Source = bitmap;
+                }
+            }
         }
 
         public void SetMainWindow(MainWindow mainWindow)
         {
             _mainWindow = mainWindow;
-        }
-
-        public void UpdateSelectedPrimImage(int primNumber)
-        {
-            // For now, we'll use a placeholder for the selected prim image
-            // Update this to use actual prim images when available
-            SelectedPrimImage.Source = new DrawingImage(new GeometryDrawing
-            {
-                Geometry = new RectangleGeometry(new Rect(0, 0, 64, 64)),
-                Brush = Brushes.LightGray,
-                Pen = new Pen(Brushes.Black, 2)
-            });
-
-            if (primNumber != -1)
-            {
-                // Optionally, draw the number on the image
-                DrawingVisual visual = new DrawingVisual();
-                using (DrawingContext context = visual.RenderOpen())
-                {
-                    context.DrawRectangle(Brushes.LightGray, new Pen(Brushes.Black, 2), new Rect(0, 0, 64, 64));
-                    FormattedText text = new FormattedText(
-                        primNumber.ToString(),
-                        System.Globalization.CultureInfo.InvariantCulture,
-                        FlowDirection.LeftToRight,
-                        new Typeface("Verdana"),
-                        32,
-                        Brushes.Black,
-                        VisualTreeHelper.GetDpi(this).PixelsPerDip);
-                    context.DrawText(text, new Point(10, 10));
-                }
-                RenderTargetBitmap bitmap = new RenderTargetBitmap(64, 64, 96, 96, PixelFormats.Pbgra32);
-                bitmap.Render(visual);
-                SelectedPrimImage.Source = bitmap;
-            }
         }
 
         private void LoadPrims()
