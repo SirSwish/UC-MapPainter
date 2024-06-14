@@ -17,7 +17,7 @@
                 <MenuItem x:Name="PrimSelectionMenuItem" Header="Prim Selection" Click="PrimSelection_Click"/>
             </MenuItem>
             <MenuItem Header="Debug">
-                <MenuItem Header="Show ObOb Info" Click="ShowObObInfo_Click"/>
+                <MenuItem Header="Show Prim Info" Click="ShowObObInfo_Click"/>
                 <MenuItem Header="Show MapWho Info" Click="ShowMapWhoInfo_Click"/>
                 <MenuItem Header="Draw MapWho Grid" Click="ToggleMapWhoGridMenuItem_Click" x:Name="ToggleMapWhoGridMenuItem"/>
             </MenuItem>
