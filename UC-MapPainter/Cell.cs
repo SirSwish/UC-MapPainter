@@ -1,17 +1,32 @@
-﻿namespace UC_MapPainter
+﻿using System.Collections;
+using System;
+
+namespace UC_MapPainter
 {
     public class Cell
     {
+        private MainWindow mainWindow;
+
         public int Row { get; set; }
         public int Column { get; set; }
         public string TextureType { get; set; }
         public int TextureNumber { get; set; }
         public int Rotation { get; set; }
+        public int Height { get; set; } = 0;
         public byte[] TileSequence { get; set; } = new byte[6];
-        public int Height { get; set; } = 0; // Default height is 0
 
+        public Cell(MainWindow mainWindow)
+        {
+            this.mainWindow = mainWindow;
+        }
 
-        public void UpdateTileSequence(bool isDefaultTexture)
+        public void UpdateTileHeight(int offset)
+        {
+            // Write the 1-byte height to the byte array starting at the specified offset + 4 (position of height in tile sequence)
+            Map.WriteHeightData(mainWindow.NewFileBytes, (byte)Height, offset);
+        }
+
+        public void UpdateTileSequence(bool isDefaultTexture, int offset)
         {
             byte textureByte = 0;
             byte methodBits = 0;
@@ -69,6 +84,9 @@
             TileSequence[3] = 0x00;
             TileSequence[4] = (byte)Height; // Store the height in the 5th byte
             TileSequence[5] = 0x00; // This is the 6th byte and can be used for other purposes if needed
+
+            // Write the 6-byte sequence to the byte array starting at the specified offset
+            Map.WriteTextureData(mainWindow.NewFileBytes, TileSequence, offset);
         }
     }
 }

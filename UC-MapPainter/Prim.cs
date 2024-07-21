@@ -9,6 +9,10 @@
         public byte Yaw { get; set; }
         public byte Flags { get; set; }
         public byte InsideIndex { get; set; }
+        // New properties to store actual map positions
+        public int PixelX { get; set; }
+        public int PixelZ { get; set; }
+        public int MapWhoIndex { get; set; }
 
         public string DisplayName => ObjectNames.GetName(PrimNumber);
     }

@@ -12,6 +12,16 @@
                 <Button x:Name="RotateRightButton" Content="⟳" Width="30" Height="30" Margin="5" Click="RotateRightButton_Click" />
                 <Button x:Name="AdjustHeightButton" Content="Adjust Height" Width="100" Height="30" Margin="5" Click="AdjustHeightButton_Click" />
             </StackPanel>
+            <UniformGrid Rows="2" Columns="3" Margin="10">
+                <CheckBox x:Name="OnFloorCheckBox" Content="On Floor" Margin="5"/>
+                <CheckBox x:Name="SearchableCheckBox" Content="Searchable" Margin="5"/>
+                <CheckBox x:Name="NotOnPsxCheckBox" Content="Not on PSX" Margin="5"/>
+                <CheckBox x:Name="DamagedCheckBox" Content="Damaged" Margin="5"/>
+                <CheckBox x:Name="WarehouseCheckBox" Content="Warehouse" Margin="5"/>
+                <CheckBox x:Name="HiddenItemCheckBox" Content="Hidden Item" Margin="5"/>
+                <CheckBox x:Name="Reserved1CheckBox" Content="Reserved 1" Margin="5"/>
+                <CheckBox x:Name="Reserved2CheckBox" Content="Reserved 2" Margin="5"/>
+            </UniformGrid>
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Height="800" Margin="10">
                 <UniformGrid x:Name="PrimGrid" Rows="64" Columns="4" Margin="10">
                     <!-- Prims will be dynamically added here -->

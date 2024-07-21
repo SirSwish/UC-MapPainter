@@ -8,7 +8,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
-using System.Windows.Shapes;
+using System.Collections.Generic;
 using Path = System.IO.Path;
 
 namespace UC_MapPainter
@@ -22,15 +22,34 @@ namespace UC_MapPainter
         private GridModel gridModel = new GridModel();
 
         //Map
-        private byte[] fileBytes;
+        public byte[] loadedFileBytes;
         private string loadedFilePath;
+        public byte[] newFileBytes;
+
+        public byte[] LoadedFileBytes
+        {
+            get { return loadedFileBytes; }
+            set { loadedFileBytes = value; }
+        }
+
+        public string LoadedFilePath
+        {
+            get { return loadedFilePath; }
+            set { loadedFilePath = value; }
+        }
+
+        public byte[] NewFileBytes
+        {
+            get { return newFileBytes; }
+            set { newFileBytes = value; }
+        }
 
         //Textures
         private TextureFunctions textureFunctions;
         private TextureSelectionWindow textureSelectionWindow;
         private int selectedWorldNumber;
         private bool isTextureSelectionLocked = false;
-        private string lockedWorld = null;
+        private int lockedWorld = -1;
         private string selectedTextureType;
         private int selectedTextureNumber;
         private int selectedTextureRotation = 0;
@@ -63,7 +82,7 @@ namespace UC_MapPainter
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            InitializeTextureSelectionWindow();
+            
             SetEditMode("Textures");
         }
 
@@ -120,35 +139,8 @@ namespace UC_MapPainter
 
         private async void NewMap_Click(object sender, RoutedEventArgs e)
         {
-            SetEditMode("Textures");
-            var worldSelectionWindow = new WorldSelectionWindow();
-            if (worldSelectionWindow.ShowDialog() == true)
-            {
-                loadedFilePath = null; // Reset the loaded file path when creating a new map
-                UpdateWindowTitle("Untitled.iam"); // Update title to "New Map.iam"
-                string selectedWorld = worldSelectionWindow.SelectedWorld;
-                selectedWorldNumber = textureFunctions.ExtractWorldNumber(selectedWorld);
-
-                ProgressBar.Visibility = Visibility.Visible;
-
-                var generatingMapWindow = new GeneratingMapWindow();
-                generatingMapWindow.Owner = this;
-                generatingMapWindow.Show();
-
-                // Clear the arrays
-                gridModel.PrimArray.Clear();
-                gridModel.MapWhoArray.Clear();
-
-                await textureFunctions.InitializeMapGridAsync(selectedWorldNumber);
-
-                generatingMapWindow.Close();
-                ProgressBar.Visibility = Visibility.Collapsed;
-                textureSelectionWindow.SetSelectedWorld(selectedWorld); // Set the selected world in the drop-down
-                textureSelectionWindow.LockWorld();
-                textureSelectionWindow.LoadWorldTextures(selectedWorld);
-                SaveMenuItem.IsEnabled = true;
-                ExportMenuItem.IsEnabled = true; // Enable the Export menu item
-            }
+            string newFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Map", "default.iam");
+            LoadMapAsync(newFile);
         }
 
         private void LoadMap_Click(object sender, RoutedEventArgs e)
@@ -166,6 +158,10 @@ namespace UC_MapPainter
             }
         }
 
+        private void SaveAsMap_Click(object sender, RoutedEventArgs e)
+        {
+            File.WriteAllBytes(loadedFilePath, newFileBytes);
+        }
         private void SaveMap_Click(object sender, RoutedEventArgs e)
         {
             var saveFileDialog = new SaveFileDialog
@@ -192,81 +188,148 @@ namespace UC_MapPainter
                     }
                 }
 
+                ///////////////////////
+                ///SAVE TEXTURE DATA//
+                /////////////////////
+
+                //This line below will eventually replace all
+                //File.WriteAllBytes(userFilePath, newFileBytes);
+
                 // Use the loaded file path as the template if a map was loaded, otherwise use default.iam
-                string templateFilePath = loadedFilePath ?? System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Map", "default.iam");
+                string templateFilePath = loadedFilePath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Map", "default.iam");
                 byte[] fileBytes = File.ReadAllBytes(templateFilePath);
 
-                // Determine the save order based on whether the default template or a loaded template is used
-                if (loadedFilePath == null)
+ 
+                // Saving using a loaded template (reverse order)
+                int index = 8; // Starting after the 8-byte header
+                for (int col = 0; col < 128; col++) // Left to right columns
                 {
-                    // Saving using the default template
-                    int index = 8; // Starting after the 8-byte header
-                    for (int col = 0; col < 128; col++) // Left to right columns
+                    for (int row = 0; row < 128; row++) // Bottom to top rows
                     {
-                        for (int row = 0; row < 128; row++) // Bottom to top rows
+                        var cell = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
+                        if (cell != null)
                         {
-                            var cell = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
-                            if (cell != null)
-                            {
-                                bool isDefaultTexture = cell.TextureNumber == 0 && cell.TextureType == "world";
-                                cell.UpdateTileSequence(isDefaultTexture);
-                                fileBytes[index] = cell.TileSequence[0]; // textureByte
-                                fileBytes[index + 1] = cell.TileSequence[1]; // combinedByte
-                                fileBytes[index + 4] = (byte)cell.Height; // height
+                            bool isDefaultTexture = cell.TextureNumber == 0 && cell.TextureType == "world";
+                            int cellTexOffest = textureFunctions.FindCellTexOffset(row, col);
+                            cell.UpdateTileSequence(isDefaultTexture, cellTexOffest);
+                            fileBytes[index] = cell.TileSequence[0]; // textureByte
+                            fileBytes[index + 1] = cell.TileSequence[1]; // combinedByte
+                            fileBytes[index + 4] = (byte)cell.Height; // height
 
-                                // Add debug statement for cell 0,0
-                                if (row == 0 && col == 0)
-                                {
-                                    string debugMessage = $"Saving cell (0,0):\nTextureByte: {cell.TileSequence[0]:X2}\nCombinedByte: {cell.TileSequence[1]:X2}\nHeight: {cell.Height}";
-                                    MessageBox.Show(debugMessage, "Debug Information", MessageBoxButton.OK, MessageBoxImage.Information);
-                                }
-
-                                // Skipping the remaining 4 bytes of the 6-byte sequence
-                                index += 6;
-                            }
+                            // Skipping the remaining 4 bytes of the 6-byte sequence
+                            index += 6;
                         }
                     }
                 }
-                else
-                {
-                    // Saving using a loaded template (reverse order)
-                    int index = 8; // Starting after the 8-byte header
-                    for (int col = 0; col < 128; col++) // Left to right columns
-                    {
-                        for (int row = 0; row < 128; row++) // Bottom to top rows
-                        {
-                            var cell = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
-                            if (cell != null)
-                            {
-                                bool isDefaultTexture = cell.TextureNumber == 0 && cell.TextureType == "world";
-                                cell.UpdateTileSequence(isDefaultTexture);
-                                fileBytes[index] = cell.TileSequence[0]; // textureByte
-                                fileBytes[index + 1] = cell.TileSequence[1]; // combinedByte
-                                fileBytes[index + 4] = (byte)cell.Height; // height
-
-                                // Skipping the remaining 4 bytes of the 6-byte sequence
-                                index += 6;
-                            }
-                        }
-                    }
-                }
+                
 
                 // Save the world number at the specified offset (0x7D4 from the end of the file)
                 int worldNumberOffset = fileBytes.Length - 0x7D4;
                 fileBytes[worldNumberOffset] = (byte)selectedWorldNumber;
 
+                ///////////////////////
+                ///SAVE PRIM DATA   //
+                /////////////////////
+
+                // Rebuild the Prim and MapWho arrays
+                primFunctions.RebuildMapWhoAndPrimArrays(out List<Prim> newPrimArray, out List<MapWho> newMapWhoArray);
+
+                // Calculate the original object offset and objectSectionSize
+                int saveType = BitConverter.ToInt32(fileBytes, 0);
+                int objectBytes = BitConverter.ToInt32(fileBytes, 4);
+
+                // Subtract 12 from the file size
+                int fileSize = fileBytes.Length;
+                int size = fileSize - 12;
+
+                // Adjust for texture data if saveType >= 25
+                if (saveType >= 25)
+                {
+                    size -= 2000;
+                }
+
+                // Subtract the original objectSectionSize
+                size -= objectBytes;
+
+                // Calculate the object offset
+                int objectOffset = size + 8;
+                // Retrieve the original number of objects
+                int originalNumObjects = BitConverter.ToInt32(fileBytes, objectOffset);
+
+                // Determine the new object section size and number of objects
+                int objectSectionSize = ((newPrimArray.Count + 1) * 8) + 4 + 2048;
+                int numObjects = newPrimArray.Count + 1;
+
+                // Calculate the difference in object count
+                int objectDifference = numObjects - originalNumObjects;
+
+                // Prepare the new object section size bytes, converting to little-endian order
+                byte[] objectSectionSizeBytes = BitConverter.GetBytes(objectSectionSize);
+
+                // Update the object section size in the loadedFileBytes
+                objectSectionSizeBytes.CopyTo(fileBytes, 4);
+
+                //Old MapWho Offset
+                int originalMapWhoOffset = objectOffset + 4 + (originalNumObjects * 8);
+
+                // Calculate the new file size
+                int newFileSize = fileBytes.Length + (objectDifference * 8);
+
+                // Create the new loadedFileBytes array to accommodate new object and MapWho data
+                byte[] newerFileBytes = new byte[newFileSize];
+
+                // Copy existing data up to the object offset
+                Array.Copy(fileBytes, newerFileBytes, objectOffset);
+
+                // Insert the number of objects at the object offset
+                BitConverter.GetBytes(numObjects).CopyTo(newerFileBytes, objectOffset);
+
+                // Write an initial 8 bytes of 0's before writing the prims
+                for (int i = 0; i < 8; i++)
+                {
+                    newerFileBytes[objectOffset + 4 + i] = 0;
+                }
+
+                // Write the prims in the newPrimArray
+                for (int i = 0; i < newPrimArray.Count; i++)
+                {
+                    var prim = newPrimArray[i];
+                    int idx = objectOffset + 4 + 8 + (i * 8); // Adjusted to start after the initial 8 bytes of 0's
+                    BitConverter.GetBytes(prim.Y).CopyTo(newerFileBytes, idx);
+                    newerFileBytes[idx + 2] = (byte)(256 - prim.X);
+                    newerFileBytes[idx + 3] = (byte)(256 - prim.Z);
+                    newerFileBytes[idx + 4] = prim.PrimNumber;
+                    newerFileBytes[idx + 5] = prim.Yaw;
+                    newerFileBytes[idx + 6] = prim.Flags;
+                    newerFileBytes[idx + 7] = prim.InsideIndex;
+                }
+
+                // Insert the new MapWho data after the object data
+                int mapWhoOffset = objectOffset + 4 + ((newPrimArray.Count + 1 )* 8);
+                for (int i = 0; i < newMapWhoArray.Count; i++)
+                {
+                    BitConverter.GetBytes((ushort)((newMapWhoArray[i].Num << 11) | (newMapWhoArray[i].Index & 0x07FF))).CopyTo(newerFileBytes, mapWhoOffset + (i * 2));
+                }
+
+                // Copy any remaining data from the original file
+                if (fileBytes.Length > originalMapWhoOffset + 2048)
+                {
+                    Array.Copy(fileBytes, originalMapWhoOffset + 2048, newerFileBytes, mapWhoOffset + 2048, fileBytes.Length - (originalMapWhoOffset + 2048));
+                }
+
                 // Save the modified file to the user-specified location
-                File.WriteAllBytes(userFilePath, fileBytes);
+                File.WriteAllBytes(userFilePath, newerFileBytes);
 
                 // Save the modified file to the "Exported" folder
                 string exportFolder = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Exported");
                 Directory.CreateDirectory(exportFolder);
                 string exportFilePath = System.IO.Path.Combine(exportFolder, System.IO.Path.GetFileName(userFilePath));
-                File.WriteAllBytes(exportFilePath, fileBytes);
+                File.WriteAllBytes(exportFilePath, newerFileBytes);
 
                 MessageBox.Show($"Map saved to {userFilePath} and {exportFilePath}", "Save Successful", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
+
 
         private void ExportMapToBmp_Click(object sender, RoutedEventArgs e)
         {
@@ -333,7 +396,7 @@ namespace UC_MapPainter
             isMapWhoGridVisible = !isMapWhoGridVisible;
         }
 
-        private void ShowObObInfo_Click(object sender, RoutedEventArgs e)
+        private void ShowPrimInfo_Click(object sender, RoutedEventArgs e)
         {
             primFunctions.DisplayObjectData();
         }
@@ -394,33 +457,46 @@ namespace UC_MapPainter
         }
 
         //////////////////
-        /// Miscealaneous
+        /// Miscellaneous
         /////////////////
 
         private async void LoadMapAsync(string filePath)
         {
-            loadedFilePath = filePath; // Store the loaded file path
-            UpdateWindowTitle(Path.GetFileName(filePath));
-            fileBytes = File.ReadAllBytes(filePath); // Store file bytes
 
             // Clear the arrays
             gridModel.PrimArray.Clear();
             gridModel.MapWhoArray.Clear();
+            ClearSelectedTexture();
 
-            // Determine the world number from the specified offset (0x7D4 from the end of the file)
-            int worldNumberOffset = fileBytes.Length - 0x7D4;
-            selectedWorldNumber = fileBytes[worldNumberOffset];
+            loadedFilePath = filePath; // Store the loaded file path
+            loadedFileBytes = File.ReadAllBytes(filePath);
+            newFileBytes = loadedFileBytes; //New File bytes will be manipulated via edit process
+            UpdateWindowTitle(Path.GetFileName(filePath));
+
+            var loadingWindow = new LoadingWindow()
+            {
+                TaskDescription = "Loading Map"
+            };
+            loadingWindow.Owner = this;
+            loadingWindow.Show();
+
+            // Get Save Type
+            loadingWindow.TaskDescription = "Getting Map Save Type";
+            int saveType = Map.ReadMapSaveType(loadedFileBytes);
+
+
+            // Determine the world number
+            loadingWindow.TaskDescription = "Getting World Number";
+            selectedWorldNumber = Map.ReadTextureWorld(loadedFileBytes, saveType);
 
             // Validate the world number
-            string selectedWorld = $"World {selectedWorldNumber}";
             if (!textureFunctions.IsValidWorld(selectedWorldNumber))
             {
                 MessageBox.Show("World not assigned to Map. Please select a world.", "Invalid World", MessageBoxButton.OK, MessageBoxImage.Warning);
                 var worldSelectionWindow = new WorldSelectionWindow();
                 if (worldSelectionWindow.ShowDialog() == true)
                 {
-                    selectedWorld = worldSelectionWindow.SelectedWorld;
-                    selectedWorldNumber = textureFunctions.ExtractWorldNumber(selectedWorld);
+                    selectedWorldNumber = int.Parse(worldSelectionWindow.SelectedWorld);
                 }
                 else
                 {
@@ -428,30 +504,30 @@ namespace UC_MapPainter
                 }
             }
 
-            textureSelectionWindow.SetSelectedWorld(selectedWorld);
+            textureSelectionWindow.SetSelectedWorld(selectedWorldNumber);
             textureSelectionWindow.LockWorld();
-            textureSelectionWindow.LoadWorldTextures(selectedWorld);
+            textureSelectionWindow.LoadWorldTextures(selectedWorldNumber);
 
-            // Show Generating Map window and progress bar
             ProgressBar.Visibility = Visibility.Visible;
-            var generatingMapWindow = new GeneratingMapWindow();
-            generatingMapWindow.Owner = this;
-            generatingMapWindow.Show();
 
-            // Extract OB_Ob and MapWho arrays
-            int saveType = BitConverter.ToInt32(fileBytes, 0);
-            int obSize1 = BitConverter.ToInt32(fileBytes, 4);
-            await primFunctions.ReadObjectData(fileBytes, saveType, obSize1);
+
+            // Extract Object and MapWho arrays
+            loadingWindow.TaskDescription = "Getting Size of the Object Section";
+            int objectSectionSize = Map.ReadObjectSize(loadedFileBytes);
+
+            loadingWindow.TaskDescription = "Reading Prim Data";
+            await primFunctions.ReadObjectData(loadedFileBytes, saveType, objectSectionSize);
 
             // Load the cells
-            await textureFunctions.InitializeMapGridFromBytesAsync(fileBytes, selectedWorldNumber);
+            loadingWindow.TaskDescription = "Loading Textures";
+            await textureFunctions.DrawCells(loadedFileBytes, selectedWorldNumber);
 
-            generatingMapWindow.Close();
+            loadingWindow.Close();
             ProgressBar.Visibility = Visibility.Collapsed;
 
             SaveMenuItem.IsEnabled = true;
             ExportMenuItem.IsEnabled = true; // Enable the Export menu item
-            SetEditMode("Textures");
+            //SetEditMode("Textures");
         }
 
         public void Cell_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -462,33 +538,11 @@ namespace UC_MapPainter
                 int pixelX = (int)position.X;
                 int pixelZ = (int)position.Y;
 
-                if (currentEditMode == "Prims" && selectedPrimNumber != -1)
-                {
-                    var ellipse = new Ellipse
-                    {
-                        Width = 15,
-                        Height = 15,
-                        Fill = Brushes.Blue,
-                        Stroke = Brushes.Black,
-                        StrokeThickness = 1
-                    };
-
-                    Canvas.SetLeft(ellipse, pixelX - ellipse.Width / 2);
-                    Canvas.SetTop(ellipse, pixelZ - ellipse.Height / 2);
-
-                    OverlayGrid.Children.Add(ellipse);
-
-                    // Reset the selected prim
-                    selectedPrimNumber = -1;
-                    if (primSelectionWindow != null && primSelectionWindow.IsLoaded)
-                    {
-                        primSelectionWindow.UpdateSelectedPrimImage(-1); // Clear the selected prim image
-                    }
-                }
-                else if (currentEditMode == "Textures")
+                if (currentEditMode == "Textures")
                 {
                     int row = 127 - Grid.GetRow(cell);
                     int col = 127 - Grid.GetColumn(cell);
+                    int cellOffset = textureFunctions.FindCellTexOffset(col, row);
 
                     var cellData = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
                     if (cellData != null)
@@ -522,20 +576,23 @@ namespace UC_MapPainter
                             cellData.TextureType = selectedTextureType;
                             cellData.TextureNumber = selectedTextureNumber;
                             cellData.Rotation = selectedTextureRotation;
-                            cellData.UpdateTileSequence(isDefaultTexture);
+                            cellData.UpdateTileSequence(isDefaultTexture, cellOffset);
                         }
                     }
                 }
+
                 else if (currentEditMode == "Height")
                 {
                     int row = 127 - Grid.GetRow(cell);
                     int col = 127 - Grid.GetColumn(cell);
+                    int cellOffset = textureFunctions.FindCellTexOffset(col, row);
 
                     var cellData = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
                     if (cellData != null)
                     {
                         int increment = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift) ? 10 : 1;
                         cellData.Height = Math.Min(cellData.Height + increment, 127);
+                        cellData.UpdateTileHeight(cellOffset);
                         if (cell.Child is TextBlock textBlock)
                         {
                             textBlock.Text = cellData.Height.ToString();
@@ -554,6 +611,72 @@ namespace UC_MapPainter
                         }
                     }
                 }
+
+                else if (currentEditMode == "Buildings")
+                {
+                    //do something
+                }
+
+                else if (currentEditMode == "Prims" && selectedPrimNumber != -1)
+                {
+                    // Calculate necessary values
+                    int mapWhoRow = 31 - (pixelZ / 256);
+                    int mapWhoCol = 31 - (pixelX / 256);
+                    int mapWhoIndex = mapWhoCol * 32 + mapWhoRow;
+                    int relativeX = pixelX % 256;
+                    int relativeZ = pixelZ % 256;
+                    int globalTileX = pixelX / 64;
+                    int globalTileZ = pixelZ / 64;
+
+                    // Get the MapWho cell
+                    var mapWho = gridModel.MapWhoArray[mapWhoIndex];
+
+                    // Check if the total number of objects exceeds 2000
+                    if (gridModel.TotalPrimCount >= 2000)
+                    {
+                        MessageBox.Show("Can't place Object. Maximum number of objects in the map is 2000", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return; // Exit the method without placing the prim
+                    }
+
+                    // Check if the MapWho cell already contains 31 prims
+                    if (gridModel.MapWhoPrimCounts[mapWhoIndex] >= 31)
+                    {
+                        MessageBox.Show("Can't place Object. Maximum number of objects per MapWho cell is 31", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return; // Exit the method without placing the prim
+                    }
+
+                    // Get the current yaw from the PrimSelectionWindow
+                    byte currentYaw = primSelectionWindow.GetCurrentYaw();
+                    byte flags = primSelectionWindow.GetFlagsValue();
+
+                    // Create the new Prim object
+                    var newPrim = new Prim
+                    {
+                        PrimNumber = (byte)selectedPrimNumber,
+                        X = (byte)relativeX,
+                        Z = (byte)relativeZ,
+                        Y = 0, // Initial Y position, you can modify this later
+                        Yaw = currentYaw, // Initial yaw from the PrimSelectionWindow
+                        Flags = flags, // Set the flags
+                        InsideIndex = 0 // Initial inside idx, modify as necessary
+                    };
+
+                    // Add the new Prim to the grid model
+                    gridModel.PrimArray.Add(newPrim);
+
+                    // Update the MapWhoPrimCounts and TotalPrimCount
+                    gridModel.MapWhoPrimCounts[mapWhoIndex]++;
+                    gridModel.TotalPrimCount++;
+
+                    primFunctions.PlacePrim(newPrim, pixelX, pixelZ, mapWhoIndex, mapWhoRow, mapWhoCol, relativeX, relativeZ, globalTileX, globalTileZ, OverlayGrid);
+
+                    // Reset the selected prim
+                    selectedPrimNumber = -1;
+                    if (primSelectionWindow != null && primSelectionWindow.IsLoaded)
+                    {
+                        primSelectionWindow.UpdateSelectedPrimImage(-1); // Clear the selected prim image
+                    }
+                }
             }
         }
 
@@ -561,6 +684,49 @@ namespace UC_MapPainter
         {
             if (e.RightButton == MouseButtonState.Pressed && sender is Border cell)
             {
+                if (currentEditMode == "Textures")
+                {
+                    //Do something
+                }
+                else if (currentEditMode == "Height")
+                {
+                    int row = 127 - Grid.GetRow(cell);
+                    int col = 127 - Grid.GetColumn(cell);
+                    int cellOffset = textureFunctions.FindCellTexOffset(col, row);
+
+                    var cellData = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
+                    if (cellData != null)
+                    {
+                        int decrement = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift) ? 10 : 1;
+                        cellData.Height = Math.Max(cellData.Height - decrement, -127);
+                        cellData.UpdateTileHeight(cellOffset);
+                        if (cell.Child is TextBlock textBlock)
+                        {
+                            textBlock.Text = cellData.Height.ToString();
+                        }
+                        else
+                        {
+                            cell.Child = new TextBlock
+                            {
+                                Text = cellData.Height.ToString(),
+                                Foreground = Brushes.Red,
+                                FontWeight = FontWeights.Bold,
+                                Margin = new Thickness(0, 0, 5, 5),
+                                HorizontalAlignment = HorizontalAlignment.Right,
+                                VerticalAlignment = VerticalAlignment.Bottom
+                            };
+                        }
+                    }
+                }
+                else if (currentEditMode == "Buildings")
+                {
+                    //Do something
+                }
+                else if (currentEditMode == "Prims")
+                {
+                    //Do something
+                }
+
                 if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
                 {
                     int row = 127 - Grid.GetRow(cell);
@@ -581,34 +747,6 @@ namespace UC_MapPainter
                                               $"Height: {cellData.Height}\n" +
                                               $"Tile Bytes: {BitConverter.ToString(cellData.TileSequence)}"; // Use the stored tile bytes
                         MessageBox.Show(debugMessage, "Cell Debug Information", MessageBoxButton.OK, MessageBoxImage.Information);
-                    }
-                }
-                else if (IsEditMode)
-                {
-                    int row = 127 - Grid.GetRow(cell);
-                    int col = 127 - Grid.GetColumn(cell);
-
-                    var cellData = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
-                    if (cellData != null)
-                    {
-                        int decrement = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift) ? 10 : 1;
-                        cellData.Height = Math.Max(cellData.Height - decrement, -127);
-                        if (cell.Child is TextBlock textBlock)
-                        {
-                            textBlock.Text = cellData.Height.ToString();
-                        }
-                        else
-                        {
-                            cell.Child = new TextBlock
-                            {
-                                Text = cellData.Height.ToString(),
-                                Foreground = Brushes.Red,
-                                FontWeight = FontWeights.Bold,
-                                Margin = new Thickness(0, 0, 5, 5),
-                                HorizontalAlignment = HorizontalAlignment.Right,
-                                VerticalAlignment = VerticalAlignment.Bottom
-                            };
-                        }
                     }
                 }
             }
@@ -679,33 +817,31 @@ namespace UC_MapPainter
 
             EditTextureButton.IsEnabled = true;
             EditHeightButton.IsEnabled = true;
-            EditBuildingsButton.IsEnabled = true;
+            EditBuildingsButton.IsEnabled = false;
             EditPrimsButton.IsEnabled = true;
 
             switch (mode)
             {
                 case "Textures":
+                    InitializeTextureSelectionWindow();
                     EditTextureButton.IsEnabled = false;
-                    IsEditMode = false;
                     OverlayGrid.Visibility = Visibility.Collapsed;
+                    ClearSelectedTexture();
                     break;
                 case "Height":
                     EditHeightButton.IsEnabled = false;
-                    IsEditMode = true;
                     OverlayGrid.Visibility = Visibility.Collapsed;
-                    ClearSelectedTexture(); // Clear the selected texture
+                    ClearSelectedTexture();
                     break;
                 case "Buildings":
                     EditBuildingsButton.IsEnabled = false;
-                    IsEditMode = false;
                     OverlayGrid.Visibility = Visibility.Collapsed;
-                    ClearSelectedTexture(); // Clear the selected texture
+                    ClearSelectedTexture();
                     break;
                 case "Prims":
                     EditPrimsButton.IsEnabled = false;
-                    IsEditMode = false;
                     OverlayGrid.Visibility = Visibility.Visible;
-                    ClearSelectedTexture(); // Clear the selected texture
+                    ClearSelectedTexture();
                     InitializePrimSelectionWindow(); // Open the PrimNumber Selection Window
                     break;
                 default:
@@ -717,9 +853,10 @@ namespace UC_MapPainter
 
         private async void UpdateCellDisplayAsync()
         {
-            var generatingMapWindow = new GeneratingMapWindow();
-            generatingMapWindow.Owner = this;
-            generatingMapWindow.Show();
+            var loadingWindow = new LoadingWindow();
+            loadingWindow.Owner = this;
+            loadingWindow.TaskDescription = "Updating Cells";
+            loadingWindow.Show();
 
             ProgressBar.Visibility = Visibility.Visible;
 
@@ -733,8 +870,9 @@ namespace UC_MapPainter
                 var cellData = gridModel.Cells.FirstOrDefault(c => Grid.GetRow(cell) == 127 - c.Row && Grid.GetColumn(cell) == 127 - c.Column);
                 if (cellData != null)
                 {
-                    if (IsEditMode)
+                    if (currentEditMode == "Height")
                     {
+                        loadingWindow.TaskDescription = "Adding Heights";
                         var textBlock = new TextBlock
                         {
                             Text = cellData.Height.ToString(),
@@ -765,7 +903,7 @@ namespace UC_MapPainter
             ProgressBar.Value = 128 * 128; // Ensure progress bar is complete
             ProgressBar.Visibility = Visibility.Collapsed;
 
-            generatingMapWindow.Close();
+            loadingWindow.Close();
         }
 
         private void DrawMapWhoGrid()
@@ -791,37 +929,6 @@ namespace UC_MapPainter
         private void UpdateWindowTitle(string fileName)
         {
             this.Title = $"Urban Chaos Map Editor - {fileName}";
-        }
-
-        private void ShowScrollablePopup(string title, string content)
-        {
-            var textBox = new TextBox
-            {
-                Text = content,
-                IsReadOnly = true,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                TextWrapping = TextWrapping.Wrap
-            };
-
-            var scrollViewer = new ScrollViewer
-            {
-                Content = textBox,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                Width = 400,
-                Height = 300
-            };
-
-            var window = new Window
-            {
-                Title = title,
-                Content = scrollViewer,
-                Width = 450,
-                Height = 350
-            };
-
-            window.ShowDialog();
         }
 
         public void UpdateSelectedPrim(int primNumber)

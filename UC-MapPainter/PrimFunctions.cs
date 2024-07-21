@@ -1,9 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
@@ -23,55 +27,45 @@ namespace UC_MapPainter
             this.primSelectionWindow = primSelectionWindow;
         }
 
-        //Read the entire object section from file, including all PrimNumber Data and MapWho array.
-        public async Task ReadObjectData(byte[] fileBytes, int saveType, int objectBytes)
+        //Read the entire object section from file, including all Prim Data and MapWho array.
+        public async Task ReadObjectData(byte[] loadedFileBytes, int saveType, int objectBytes)
         {
             //Clear any old objects if we have previously loaded a file
             gridModel.PrimArray.Clear();
             gridModel.MapWhoArray.Clear();
 
-            int fileSize = fileBytes.Length;
-            int size = fileSize - 12;
+            int objectOffset = CalculateObjectOffset(loadedFileBytes.Length, saveType, objectBytes);
 
-            if (saveType >= 25)
+            //Read prims and add to grid
+            List<Prim> primArray = Map.ReadPrims(loadedFileBytes, objectOffset);
+            foreach (var prim in primArray)
             {
-                size -= 2000;  // Adjust for texture data
-            }
-
-            size -= objectBytes;  // Subtract the object size
-            int objectOffset = size + 8;
-            int numObjects = BitConverter.ToInt32(fileBytes, objectOffset);
-
-            // Read OB_Ob PrimNumber array
-            for (int i = 0; i < numObjects; i++)
-            {
-                int index = objectOffset + 4 + (i * 8);
-                var prim = new Prim
-                {
-                    Y = BitConverter.ToInt16(fileBytes, index),
-                    X = fileBytes[index + 2],
-                    Z = fileBytes[index + 3],
-                    PrimNumber = fileBytes[index + 4],
-                    Yaw = fileBytes[index + 5],
-                    Flags = fileBytes[index + 6],
-                    InsideIndex = fileBytes[index + 7]
-                };
                 gridModel.PrimArray.Add(prim);
             }
 
             // Read MapWho
-            int mapWhoOffset = objectOffset + 4 + (numObjects * 8);
-            for (int i = 0; i < 32 * 32; i++)
+            List<MapWho> mapWhoArray = Map.ReadMapWho(loadedFileBytes, objectOffset);
+            foreach (var mapWho in mapWhoArray)
             {
-                int index = mapWhoOffset + (i * 2);
-                ushort cell = BitConverter.ToUInt16(fileBytes, index);
-                var mapWho = new MapWho
-                {
-                    Index = cell & 0x07FF,
-                    Num = (cell >> 11) & 0x1F
-                };
                 gridModel.MapWhoArray.Add(mapWho);
             }
+
+            gridModel.MapWhoPrimCounts.Clear();
+            gridModel.TotalPrimCount = 0;
+
+            // Initialize MapWhoPrimCounts based on loaded MapWho data
+            for (int i = 0; i < gridModel.MapWhoArray.Count; i++)
+            {
+                gridModel.MapWhoPrimCounts[i] = gridModel.MapWhoArray[i].Num;
+                gridModel.TotalPrimCount += gridModel.MapWhoArray[i].Num;
+            }
+        }
+
+        // Calculate the object offset in the file, return as an integer
+        public int CalculateObjectOffset(int fileLength, int saveType, int objectBytes)
+        {
+            int sizeAdjustment = saveType >= 25 ? 2000 : 0;
+            return fileLength - 12 - sizeAdjustment - objectBytes + 8;
         }
 
         //Update the Prim Image preview if the user selects a Prim from the Prim selection Window
@@ -85,11 +79,9 @@ namespace UC_MapPainter
         }
 
         //Draw all the Prims to the canvas which overlays the tiles
-        public void DrawPrims(Canvas OverlayGrid)
+        public void DrawPrims(Canvas overlayGrid)
         {
-            OverlayGrid.Children.Clear(); // Clear existing objects
-            string appBasePath = AppDomain.CurrentDomain.BaseDirectory;
-            string topPrimsFolder = System.IO.Path.Combine(appBasePath, "Prims", "TopPrims");
+            overlayGrid.Children.Clear(); // Clear existing objects
 
             for (int mapWhoIndex = 0; mapWhoIndex < gridModel.MapWhoArray.Count; mapWhoIndex++)
             {
@@ -116,50 +108,125 @@ namespace UC_MapPainter
                     int finalPixelX = pixelX;
                     int finalPixelZ = pixelZ;
 
-                    string primImagePath = System.IO.Path.Combine(topPrimsFolder, $"{ob.PrimNumber}.png");
-                    if (File.Exists(primImagePath))
-                    {
-                        var primImage = new Image
-                        {
-                            Source = new BitmapImage(new Uri(primImagePath))
-                        };
-
-                        double rotationAngle = -((ob.Yaw / 255.0) * 360);
-                        var rotateTransform = new RotateTransform(rotationAngle);
-                        primImage.RenderTransform = rotateTransform;
-                        primImage.RenderTransformOrigin = new Point(0.5, 0.5);
-
-                        primImage.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                        primImage.Arrange(new Rect(0, 0, primImage.DesiredSize.Width, primImage.DesiredSize.Height));
-
-                        Canvas.SetLeft(primImage, finalPixelX - primImage.DesiredSize.Width / 2);
-                        Canvas.SetTop(primImage, finalPixelZ - primImage.DesiredSize.Height / 2);
-                        OverlayGrid.Children.Add(primImage);
-                        Canvas.SetZIndex(primImage, 0);
-                    }
-
-                    var ellipse = new Ellipse
-                    {
-                        Width = 15,
-                        Height = 15,
-                        Fill = Brushes.Red,
-                        Stroke = Brushes.Black,
-                        StrokeThickness = 1
-                    };
-
-                    Canvas.SetLeft(ellipse, finalPixelX - ellipse.Width / 2);
-                    Canvas.SetTop(ellipse, finalPixelZ - ellipse.Height / 2);
-
-                    Canvas.SetZIndex(ellipse, 1);
-
-                    ellipse.MouseLeftButtonDown += (s, e) => ShowPrimInfo(ob, mapWhoIndex, mapWhoRow, mapWhoCol, relativeX, relativeZ, globalTileX, globalTileZ, finalPixelX, finalPixelZ);
-
-                    OverlayGrid.Children.Add(ellipse);
+                    PlacePrim(ob, finalPixelX, finalPixelZ, mapWhoIndex, mapWhoRow, mapWhoCol, relativeX, relativeZ, globalTileX, globalTileZ, overlayGrid);
                 }
             }
         }
 
-        //Show information about the Primwhen it's elipse is selected
+        //Physically draw the Prims to Map
+        public void PlacePrim(Prim prim, int pixelX, int pixelZ, int mapWhoIndex, int mapWhoRow, int mapWhoCol, int relativeX, int relativeZ, int globalTileX, int globalTileZ, Canvas overlayGrid)
+        {
+            prim.PixelX = pixelX;
+            prim.PixelZ = pixelZ;
+            prim.MapWhoIndex = mapWhoIndex;
+
+            string appBasePath = AppDomain.CurrentDomain.BaseDirectory;
+            string topPrimsFolder = System.IO.Path.Combine(appBasePath, "Prims", "TopPrims");
+
+            // Add the Prim image to the overlay grid
+            string primImagePath = System.IO.Path.Combine(topPrimsFolder, $"{prim.PrimNumber}.png");
+            if (File.Exists(primImagePath))
+            {
+                var primImage = new Image
+                {
+                    Source = new BitmapImage(new Uri(primImagePath))
+                };
+
+                double rotationAngle = -((prim.Yaw / 255.0) * 360);
+                var rotateTransform = new RotateTransform(rotationAngle);
+                primImage.RenderTransform = rotateTransform;
+                primImage.RenderTransformOrigin = new System.Windows.Point(0.5, 0.5);
+
+                primImage.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+                primImage.Arrange(new System.Windows.Rect(0, 0, primImage.DesiredSize.Width, primImage.DesiredSize.Height));
+
+                Canvas.SetLeft(primImage, pixelX - primImage.DesiredSize.Width / 2);
+                Canvas.SetTop(primImage, pixelZ - primImage.DesiredSize.Height / 2);
+                overlayGrid.Children.Add(primImage);
+                Canvas.SetZIndex(primImage, 0);
+            }
+
+            // Draw the ellipse on the overlay grid
+            var ellipse = new Ellipse
+            {
+                Width = 15,
+                Height = 15,
+                Fill = Brushes.Red,
+                Stroke = Brushes.Black,
+                StrokeThickness = 1
+            };
+
+            Canvas.SetLeft(ellipse, pixelX - ellipse.Width / 2);
+            Canvas.SetTop(ellipse, pixelZ - ellipse.Height / 2);
+
+            Canvas.SetZIndex(ellipse, 1);
+
+            ellipse.MouseLeftButtonDown += (s, e) =>
+            {
+                ShowPrimInfo(prim, mapWhoIndex, mapWhoRow, mapWhoCol, relativeX, relativeZ, globalTileX, globalTileZ, pixelX, pixelZ);
+            };
+
+            overlayGrid.Children.Add(ellipse);
+        }
+
+        public void RebuildMapWhoAndPrimArrays(out List<Prim> newPrimArray, out List<MapWho> newMapWhoArray)
+        {
+            // Sort the prims by their MapWho index
+            gridModel.PrimArray.Sort((a, b) => a.MapWhoIndex.CompareTo(b.MapWhoIndex));
+
+            List<Prim> sortedPrimArray = gridModel.PrimArray.Where(p => p.PrimNumber != 0).ToList();
+
+            // Initialize new arrays as lists
+            newPrimArray = new List<Prim>();
+            newMapWhoArray = new List<MapWho>(new MapWho[1024]);
+
+            // Initialize the newMapWhoArray with empty MapWho entries
+            for (int i = 0; i < 1024; i++)
+            {
+                newMapWhoArray[i] = new MapWho
+                {
+                    Index = 0,
+                    Num = 0
+                };
+            }
+
+            // Rebuild the Prim array
+            newPrimArray.AddRange(sortedPrimArray);
+
+            // Rebuild the MapWho array
+            int currentMapWhoIndex = -1;
+            int currentPrimCount = 0;
+            int currentPrimStartIndex = 0;
+            for (int i = 0; i < sortedPrimArray.Count; i++)
+            {
+                var prim = sortedPrimArray[i];
+                int mapWhoIndex = prim.MapWhoIndex;
+                if (mapWhoIndex != currentMapWhoIndex)
+                {
+                    if (currentMapWhoIndex != -1)
+                    {
+                        newMapWhoArray[currentMapWhoIndex].Index = currentPrimStartIndex+1;
+                        newMapWhoArray[currentMapWhoIndex].Num = currentPrimCount;
+                        currentPrimStartIndex += currentPrimCount;
+                    }
+
+                    // Update the currentMapWhoIndex and reset the count
+                    currentMapWhoIndex = mapWhoIndex;
+                    currentPrimCount = 0;
+                }
+                currentPrimCount++;
+            }
+
+            // Set the MapWho entry for the last cell
+            if (currentMapWhoIndex != -1)
+            {
+                newMapWhoArray[currentMapWhoIndex].Index = currentPrimStartIndex+1;
+                newMapWhoArray[currentMapWhoIndex].Num = currentPrimCount;
+            }
+        }
+
+
+        //Show information about the Prim when it's elipse is selected
         public void ShowPrimInfo(Prim ob, int mapWhoIndex, int mapWhoRow, int mapWhoCol, int relativeX, int relativeZ, int globalTileX, int globalTileZ, int pixelX, int pixelZ)
         {
             string objectInfo = $"MapWho Index: {mapWhoIndex}\n" +
@@ -270,7 +337,7 @@ namespace UC_MapPainter
                         Foreground = Brushes.Red,
                         FontSize = 10,
                         FontWeight = FontWeights.Bold,
-                        Background = new SolidColorBrush(Color.FromArgb(128, 255, 255, 255))
+                        Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(128, 255, 255, 255))
                     };
                     Canvas.SetLeft(label, col * 4 * 64 + 2);
                     Canvas.SetTop(label, row * 4 * 64 + 2);

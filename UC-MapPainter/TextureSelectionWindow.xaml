@@ -7,23 +7,24 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="10">
             <!-- World Number Drop Down -->
+            <TextBlock Text="World Number" FontWeight="Bold" Margin="0,0,0,5"/>
             <ComboBox Name="WorldNumberComboBox" SelectionChanged="WorldNumberComboBox_SelectionChanged" Margin="0,0,0,10">
-                <ComboBoxItem Content="World 1"/>
-                <ComboBoxItem Content="World 3"/>
-                <ComboBoxItem Content="World 4"/>
-                <ComboBoxItem Content="World 5"/>
-                <ComboBoxItem Content="World 7"/>
-                <ComboBoxItem Content="World 8"/>
-                <ComboBoxItem Content="World 9"/>
-                <ComboBoxItem Content="World 10"/>
-                <ComboBoxItem Content="World 11"/>
-                <ComboBoxItem Content="World 12"/>
-                <ComboBoxItem Content="World 13"/>
-                <ComboBoxItem Content="World 15"/>
-                <ComboBoxItem Content="World 16"/>
-                <ComboBoxItem Content="World 17"/>
-                <ComboBoxItem Content="World 18"/>
-                <ComboBoxItem Content="World 20"/>
+                <ComboBoxItem Content="1"/>
+                <ComboBoxItem Content="3"/>
+                <ComboBoxItem Content="4"/>
+                <ComboBoxItem Content="5"/>
+                <ComboBoxItem Content="7"/>
+                <ComboBoxItem Content="8"/>
+                <ComboBoxItem Content="9"/>
+                <ComboBoxItem Content="10"/>
+                <ComboBoxItem Content="11"/>
+                <ComboBoxItem Content="12"/>
+                <ComboBoxItem Content="13"/>
+                <ComboBoxItem Content="15"/>
+                <ComboBoxItem Content="16"/>
+                <ComboBoxItem Content="17"/>
+                <ComboBoxItem Content="18"/>
+                <ComboBoxItem Content="20"/>
             </ComboBox>
 
             <!-- World Textures -->

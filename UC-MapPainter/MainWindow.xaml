@@ -8,7 +8,7 @@
             <MenuItem Header="File">
                 <MenuItem Header="New Map" Click="NewMap_Click"/>
                 <MenuItem Header="Load Map" Click="LoadMap_Click"/>
-                <MenuItem Header="Save Map" Click="SaveMap_Click" x:Name="SaveMenuItem" IsEnabled="False"/>
+                <MenuItem Header="Save Map" Click="SaveAsMap_Click" x:Name="SaveMenuItem" IsEnabled="False"/>
                 <MenuItem Header="Export Map to BMP" Click="ExportMapToBmp_Click" x:Name="ExportMenuItem" IsEnabled="False"/>
                 <MenuItem Header="Exit" Click="Exit_Click"/>
             </MenuItem>
@@ -17,7 +17,7 @@
                 <MenuItem x:Name="PrimSelectionMenuItem" Header="Prim Selection" Click="PrimSelection_Click"/>
             </MenuItem>
             <MenuItem Header="Debug">
-                <MenuItem Header="Show Prim Info" Click="ShowObObInfo_Click"/>
+                <MenuItem Header="Show Prim Info" Click="ShowPrimInfo_Click"/>
                 <MenuItem Header="Show MapWho Info" Click="ShowMapWhoInfo_Click"/>
                 <MenuItem Header="Draw MapWho Grid" Click="ToggleMapWhoGridMenuItem_Click" x:Name="ToggleMapWhoGridMenuItem"/>
             </MenuItem>

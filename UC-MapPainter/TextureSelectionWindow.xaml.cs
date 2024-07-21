@@ -82,21 +82,31 @@ namespace UC_MapPainter
         {
             if (WorldNumberComboBox.SelectedItem is ComboBoxItem selectedItem && !_isWorldLocked)
             {
-                string selectedWorld = selectedItem.Content.ToString();
-                LoadWorldTextures(selectedWorld);
+                // Parse the content to an integer
+                if (int.TryParse(selectedItem.Content.ToString(), out int selectedWorld))
+                {
+                    LoadWorldTextures(selectedWorld);
+                }
+                else
+                {
+                    // Handle the case where the content is not a valid integer
+                    MessageBox.Show("The selected item's content is not a valid integer.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
 
-        public void LoadWorldTextures(string worldNumber)
+
+        public void LoadWorldTextures(int world)
         {
             try
             {
                 // Clear existing textures in the WorldTexturesGrid
                 WorldTexturesGrid.Children.Clear();
+                string worldNumber = world.ToString(); // Convert the integer to a string
 
                 // Load textures from the selected world folder
                 string appBasePath = AppDomain.CurrentDomain.BaseDirectory;
-                string worldFolderPath = Path.Combine(appBasePath, "Textures", worldNumber.Replace(" ", "").ToLower());
+                string worldFolderPath = Path.Combine(appBasePath, "Textures/world" + worldNumber);
 
                 if (Directory.Exists(worldFolderPath))
                 {
@@ -161,13 +171,21 @@ namespace UC_MapPainter
             return -1; // Default or error value
         }
 
-        public string GetSelectedWorld()
+        public int GetSelectedWorld()
         {
             if (WorldNumberComboBox.SelectedItem is ComboBoxItem selectedItem)
             {
-                return selectedItem.Content.ToString();
+                // Ensure the content is a string that can be parsed to an integer
+                if (int.TryParse(selectedItem.Content.ToString(), out int result))
+                {
+                    return result;
+                }
+                else
+                {
+                    throw new InvalidOperationException("The selected item's content is not a valid integer.");
+                }
             }
-            return null;
+            return -1;
         }
 
         public bool IsWorldLocked
@@ -187,11 +205,12 @@ namespace UC_MapPainter
             WorldNumberComboBox.IsEnabled = true;
         }
 
-        public void SetSelectedWorld(string world)
+        public void SetSelectedWorld(int world)
         {
+            string worldString = world.ToString(); // Convert the integer to a string
             foreach (ComboBoxItem item in WorldNumberComboBox.Items)
             {
-                if (item.Content.ToString() == world)
+                if (item.Content.ToString() == worldString) // Compare the string representation
                 {
                     WorldNumberComboBox.SelectedItem = item;
                     break;

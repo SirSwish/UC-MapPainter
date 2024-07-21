@@ -1,4 +1,4 @@
-﻿<Window x:Class="UC_MapPainter.GeneratingMapWindow"
+﻿<Window x:Class="UC_MapPainter.LoadingWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Generating Map" Height="100" Width="300"
@@ -8,6 +8,10 @@
         ShowInTaskbar="False"
         Topmost="True">
     <Grid>
-        <TextBlock Text="Generating Map. Please wait..." VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="16"/>
+        <TextBlock VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="16">
+            <TextBlock.Text>
+                <Binding Path="TaskDescription" RelativeSource="{RelativeSource AncestorType=Window}" StringFormat="{}{0}. &#x0a;Please wait..." />
+            </TextBlock.Text>
+        </TextBlock>
     </Grid>
 </Window>
