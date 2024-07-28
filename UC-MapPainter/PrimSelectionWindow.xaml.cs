@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -12,6 +13,7 @@ namespace UC_MapPainter
         private MainWindow _mainWindow;
         private int selectedPrimNumber = -1;
         private byte yaw = 0;
+        private short height = 0;
 
         public PrimSelectionWindow()
         {
@@ -187,9 +189,59 @@ namespace UC_MapPainter
             return yaw;
         }
 
+        public short GetCurrentHeight()
+        {
+            return height;
+        }
+
         private void AdjustHeightButton_Click(object sender, RoutedEventArgs e)
         {
-            // Handle adjust height logic
+            HeightAdjustmentPanel.Visibility = Visibility.Visible;
+            HeightSlider.Value = height;
+            HeightTextBox.Text = height.ToString();
+            UpdateStoreyLabel();
+        }
+
+        private void HeightSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (HeightTextBox != null)
+            {
+                height = (short)HeightSlider.Value;
+                HeightTextBox.Text = height.ToString();
+                UpdateStoreyLabel();
+            }
+        }
+
+        private void HeightTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (short.TryParse(HeightTextBox.Text, out short value))
+            {
+                height = value;
+                HeightSlider.Value = height;
+                UpdateStoreyLabel();
+            }
+        }
+
+        private void IncreaseHeight_Click(object sender, RoutedEventArgs e)
+        {
+            height = (short)Math.Min(height + 255, 32767);
+            HeightSlider.Value = height;
+            HeightTextBox.Text = height.ToString();
+            UpdateStoreyLabel();
+        }
+
+        private void DecreaseHeight_Click(object sender, RoutedEventArgs e)
+        {
+            height = (short)Math.Max(height - 255, -32768);
+            HeightSlider.Value = height;
+            HeightTextBox.Text = height.ToString();
+            UpdateStoreyLabel();
+        }
+
+        private void UpdateStoreyLabel()
+        {
+            int storeys = height / 255;
+            StoreyLabel.Text = $"{storeys} Storeys";
         }
     }
 }

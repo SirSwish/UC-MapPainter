@@ -4,6 +4,7 @@
         Title="Prim Selection" Height="1000" Width="400" WindowStyle="ToolWindow">
     <Grid>
         <StackPanel>
+            <!-- Existing UI Elements -->
             <Border BorderBrush="Black" BorderThickness="2" Margin="10" HorizontalAlignment="Center">
                 <Image x:Name="SelectedPrimImage" Width="64" Height="64" Margin="10" />
             </Border>
@@ -11,6 +12,17 @@
                 <Button x:Name="RotateLeftButton" Content="⟲" Width="30" Height="30" Margin="5" Click="RotateLeftButton_Click" />
                 <Button x:Name="RotateRightButton" Content="⟳" Width="30" Height="30" Margin="5" Click="RotateRightButton_Click" />
                 <Button x:Name="AdjustHeightButton" Content="Adjust Height" Width="100" Height="30" Margin="5" Click="AdjustHeightButton_Click" />
+            </StackPanel>
+            <!-- New UI Elements for Height Adjustment -->
+            <StackPanel Orientation="Vertical" Margin="10" Visibility="Collapsed" x:Name="HeightAdjustmentPanel">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Height:" VerticalAlignment="Center" Margin="5"/>
+                    <Button Content="-" Width="30" Click="DecreaseHeight_Click" />
+                    <Slider x:Name="HeightSlider" Width="150" Minimum="-32768" Maximum="32767" ValueChanged="HeightSlider_ValueChanged" />
+                    <Button Content="+" Width="30" Click="IncreaseHeight_Click" />
+                    <TextBox x:Name="HeightTextBox" Width="50" VerticalAlignment="Center" TextChanged="HeightTextBox_TextChanged" />
+                </StackPanel>
+                <TextBlock x:Name="StoreyLabel" Text="0 Storeys" VerticalAlignment="Center" Margin="5"/>
             </StackPanel>
             <UniformGrid Rows="2" Columns="3" Margin="10">
                 <CheckBox x:Name="OnFloorCheckBox" Content="On Floor" Margin="5"/>

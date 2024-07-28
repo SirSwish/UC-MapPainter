@@ -95,7 +95,6 @@ namespace UC_MapPainter
                         Height = 64
                     };
 
-
                     cell.MouseLeftButtonDown += mainWindow.Cell_MouseLeftButtonDown;
                     cell.MouseRightButtonDown += mainWindow.Cell_MouseRightButtonDown;
 
@@ -150,6 +149,25 @@ namespace UC_MapPainter
                         TileSequence = tileBytes // Store the tile bytes
                     };
                     gridModel.Cells.Add(cellData);
+
+
+                    if (mainWindow.currentEditMode == "Height")
+                    {
+                        var textBlock = new TextBlock
+                        {
+                            Text = cellData.Height.ToString(),
+                            Foreground = Brushes.Red,
+                            FontWeight = FontWeights.Bold,
+                            Margin = new Thickness(0, 0, 5, 5),
+                            HorizontalAlignment = HorizontalAlignment.Right,
+                            VerticalAlignment = VerticalAlignment.Bottom
+                        };
+                        cell.Child = textBlock;
+                    }
+                    else
+                    {
+                        cell.Child = null;
+                    }
 
                     // Use the cell data to set the cell background
                     await PaintCell(cell, textureType, textureNumber, rotation, selectedWorldNumber);

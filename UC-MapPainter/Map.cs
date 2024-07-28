@@ -36,6 +36,22 @@ namespace UC_MapPainter
             return BitConverter.ToInt32(fileBytes, 4);
         }
 
+        //Determine the actual size of the objects section 
+        public static int ReadObjectSectionSize(byte[] fileBytes, int saveType, int objectBytes)
+        {
+            int size = fileBytes.Length - 12;
+
+            // Adjust for texture data if saveType >= 25
+            if (saveType >= 25)
+            {
+                size -= 2000;
+            }
+
+            // Subtract the original objectSectionSize
+            size -= objectBytes;
+
+            return size;
+        }
         // Read the 128 * 128 Texture/Height data
         public static byte[] ReadTextureData(byte[] fileBytes)
         {
@@ -51,6 +67,12 @@ namespace UC_MapPainter
             byte[] buildingData = new byte[buildingDataSize];
             Array.Copy(fileBytes, BuildingDataOffset, buildingData, 0, buildingDataSize);
             return buildingData;
+        }
+
+        //Read just the number of objects
+        public static int ReadNumberPrimObjects(byte[] fileBytes, int objectOffset)
+        {
+            return BitConverter.ToInt32(fileBytes, objectOffset);
         }
 
         // Read all the Prim Data
@@ -157,7 +179,7 @@ namespace UC_MapPainter
         //Write new Prim objects to buffer
         public static void WritePrims(byte[] newFileBytes, List<Prim> newPrimArray, int newObjectOffset)
         {
-            int numObjects = newPrimArray.Count;
+            int numObjects = newPrimArray.Count +1;
             BitConverter.GetBytes(numObjects).CopyTo(newFileBytes, newObjectOffset);
 
             // Write an initial 8 bytes of 0's before writing the prims

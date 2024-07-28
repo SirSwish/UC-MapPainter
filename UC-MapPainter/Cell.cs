@@ -23,7 +23,7 @@ namespace UC_MapPainter
         public void UpdateTileHeight(int offset)
         {
             // Write the 1-byte height to the byte array starting at the specified offset + 4 (position of height in tile sequence)
-            Map.WriteHeightData(mainWindow.NewFileBytes, (byte)Height, offset);
+            Map.WriteHeightData(mainWindow.ModifiedFileBytes, (byte)Height, offset);
         }
 
         public void UpdateTileSequence(bool isDefaultTexture, int offset)
@@ -86,7 +86,7 @@ namespace UC_MapPainter
             TileSequence[5] = 0x00; // This is the 6th byte and can be used for other purposes if needed
 
             // Write the 6-byte sequence to the byte array starting at the specified offset
-            Map.WriteTextureData(mainWindow.NewFileBytes, TileSequence, offset);
+            Map.WriteTextureData(mainWindow.ModifiedFileBytes, TileSequence, offset);
         }
     }
 }

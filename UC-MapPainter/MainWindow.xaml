@@ -8,7 +8,8 @@
             <MenuItem Header="File">
                 <MenuItem Header="New Map" Click="NewMap_Click"/>
                 <MenuItem Header="Load Map" Click="LoadMap_Click"/>
-                <MenuItem Header="Save Map" Click="SaveAsMap_Click" x:Name="SaveMenuItem" IsEnabled="False"/>
+                <MenuItem Header="Save Map" Click="SaveMap_Click" x:Name="SaveMenuItem" IsEnabled="False"/>
+                <MenuItem Header="Save Map As..." Click="SaveAsMap_Click" x:Name="SaveAsMenuItem" IsEnabled="False"/>
                 <MenuItem Header="Export Map to BMP" Click="ExportMapToBmp_Click" x:Name="ExportMenuItem" IsEnabled="False"/>
                 <MenuItem Header="Exit" Click="Exit_Click"/>
             </MenuItem>
@@ -32,10 +33,11 @@
             <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="10,0">
                 <Label Content="Edit Mode" FontWeight="Bold" HorizontalAlignment="Center" />
                 <StackPanel Orientation="Horizontal">
-                    <Button Content="Textures" Click="EditTextureButton_Click" x:Name="EditTextureButton" Width="75" Height="30" Margin="5,0"/>
-                    <Button Content="Height" Click="EditHeightButton_Click" x:Name="EditHeightButton" Width="75" Height="30" Margin="5,0"/>
-                    <Button Content="Buildings" IsEnabled="False" x:Name="EditBuildingsButton" Width="75" Height="30" Margin="5,0"/>
-                    <Button Content="Prims" Click="EditPrimsButton_Click" x:Name="EditPrimsButton" Width="75" Height="30" Margin="5,0"/>
+                    <Button Content="Textures" Click="EditTextureButton_Click" x:Name="EditTextureButton" Width="75" Height="30" Margin="5,0" IsEnabled="False"/>
+                    <Button Content="Height" Click="EditHeightButton_Click" x:Name="EditHeightButton" Width="75" Height="30" Margin="5,0" IsEnabled="False"/>
+                    <Button Content="Buildings" Click="EditBuildingsButton_Click" x:Name="EditBuildingsButton" Width="75" Height="30" Margin="5,0" IsEnabled="False"/>
+                    <Button Content="Prims" Click="EditPrimsButton_Click" x:Name="EditPrimsButton" Width="75" Height="30" Margin="5,0" IsEnabled="False"/>
+
                 </StackPanel>
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="10,0">

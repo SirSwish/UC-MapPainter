@@ -19,7 +19,7 @@
     <Resource Include="Images\default.bmp" />
     <Resource Include="Images\icon.ico" />
     <Resource Include="Images\noTile.bmp" />
-    <Resource Include="Map\default.iam" />
+    <EmbeddedResource Include="Map\default.iam" />
   </ItemGroup>
 
   <ItemGroup>

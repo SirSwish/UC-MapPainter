@@ -75,7 +75,7 @@ namespace UC_MapPainter
                 return;
 
             // Manually set the initial selection to trigger texture loading
-            WorldNumberComboBox.SelectedIndex = 0;
+            //WorldNumberComboBox.SelectedIndex = 0;
         }
 
         private void WorldNumberComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)

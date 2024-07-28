@@ -91,6 +91,12 @@ namespace UC_MapPainter
 
                 for (int i = 0; i < mapWho.Num; i++)
                 {
+                    if (mapWho.Index + i >= gridModel.PrimArray.Count)
+                    {
+                        Console.WriteLine($"Invalid index: MapWhoIndex = {mapWhoIndex}, PrimIndex = {mapWho.Index + i}, PrimArray.Count = {gridModel.PrimArray.Count}");
+                        continue; // Skip invalid indices
+                    }
+
                     var ob = gridModel.PrimArray[mapWho.Index + i];
 
                     int relativeX = ob.X & 0xFF;
@@ -166,7 +172,83 @@ namespace UC_MapPainter
                 ShowPrimInfo(prim, mapWhoIndex, mapWhoRow, mapWhoCol, relativeX, relativeZ, globalTileX, globalTileZ, pixelX, pixelZ);
             };
 
+            ellipse.MouseRightButtonDown += (s, e) =>
+            {
+                RemovePrim(prim, overlayGrid);
+            };
+
             overlayGrid.Children.Add(ellipse);
+        }
+
+        public void RemovePrim(Prim prim, Canvas overlayGrid)
+        {
+            // Find and remove the prim from the grid model
+            gridModel.PrimArray.Remove(prim);
+
+            // Remove the visual elements from the canvas
+            var elementsToRemove = overlayGrid.Children.OfType<UIElement>()
+                .Where(el => Canvas.GetLeft(el) == prim.PixelX - 7.5 && Canvas.GetTop(el) == prim.PixelZ - 7.5)
+                .ToList();
+
+            foreach (var el in elementsToRemove)
+            {
+                overlayGrid.Children.Remove(el);
+            }
+
+            // Rebuild MapWho and Prim arrays
+            RebuildMapWhoAndPrimArrays(out List<Prim> newPrimArray, out List<MapWho> newMapWhoArray);
+
+            // Calculate the original object offset and objectSectionSize
+            int saveType = Map.ReadMapSaveType(mainWindow.ModifiedFileBytes);
+            int objectBytes = Map.ReadObjectSize(mainWindow.ModifiedFileBytes);
+
+            // Get the physical size of the object section
+            int size = Map.ReadObjectSectionSize(mainWindow.ModifiedFileBytes, saveType, objectBytes);
+
+            // Calculate the object offset
+            int objectOffset = size + 8;
+            // Retrieve the original number of objects
+            int originalNumObjects = Map.ReadNumberPrimObjects(mainWindow.ModifiedFileBytes, objectOffset);
+
+            // Determine the new object section size and number of objects
+            int objectSectionSize = ((newPrimArray.Count + 1) * 8) + 4 + 2048;
+            int numObjects = newPrimArray.Count + 1;
+
+            // Calculate the difference in object count
+            int objectDifference = numObjects - originalNumObjects;
+
+            // Old MapWho Offset
+            int originalMapWhoOffset = objectOffset + 4 + (originalNumObjects * 8);
+
+            // Calculate the new file size
+            int newFileSize = mainWindow.ModifiedFileBytes.Length + (objectDifference * 8);
+
+            // Create the new transitory fileBytes containing the updated object data.
+            byte[] swapFileBytes = new byte[newFileSize];
+
+            // Copy existing data up to the object offset
+            Array.Copy(mainWindow.ModifiedFileBytes, swapFileBytes, objectOffset);
+
+            // Write the updated object section size in the transitory file
+            Map.WriteObjectSize(swapFileBytes, objectSectionSize);
+
+            // Write new prims
+            Map.WritePrims(swapFileBytes, newPrimArray, objectOffset);
+
+            // Insert the new MapWho data after the object data
+            int mapWhoOffset = objectOffset + 4 + ((newPrimArray.Count + 1) * 8);
+            Map.WriteMapWho(swapFileBytes, newMapWhoArray, mapWhoOffset);
+
+            // Copy any remaining data from the original file
+            if (mainWindow.ModifiedFileBytes.Length > originalMapWhoOffset + 2048)
+            {
+                Array.Copy(mainWindow.ModifiedFileBytes, originalMapWhoOffset + 2048, swapFileBytes, mapWhoOffset + 2048, mainWindow.ModifiedFileBytes.Length - (originalMapWhoOffset + 2048));
+            }
+
+            mainWindow.ModifiedFileBytes = swapFileBytes;
+
+            // Redraw the prims
+            DrawPrims(overlayGrid);
         }
 
         public void RebuildMapWhoAndPrimArrays(out List<Prim> newPrimArray, out List<MapWho> newMapWhoArray)
@@ -174,7 +256,7 @@ namespace UC_MapPainter
             // Sort the prims by their MapWho index
             gridModel.PrimArray.Sort((a, b) => a.MapWhoIndex.CompareTo(b.MapWhoIndex));
 
-            List<Prim> sortedPrimArray = gridModel.PrimArray.Where(p => p.PrimNumber != 0).ToList();
+            List<Prim> sortedPrimArray = gridModel.PrimArray.Where(p => +p.PrimNumber != 0).ToList();
 
             // Initialize new arrays as lists
             newPrimArray = new List<Prim>();
@@ -220,10 +302,65 @@ namespace UC_MapPainter
             // Set the MapWho entry for the last cell
             if (currentMapWhoIndex != -1)
             {
+                //What is happening here!?!
                 newMapWhoArray[currentMapWhoIndex].Index = currentPrimStartIndex+1;
                 newMapWhoArray[currentMapWhoIndex].Num = currentPrimCount;
             }
         }
+
+        public static byte[] UpdatePrimAndMapWhoSections(byte[] newFileBytes, List<Prim> newPrimArray, List<MapWho> newMapWhoArray)
+        {
+            // Calculate the original object offset and objectSectionSize
+            int saveType = Map.ReadMapSaveType(newFileBytes);
+            int objectBytes = Map.ReadObjectSize(newFileBytes);
+
+            // Get the physical size of the object section
+            int size = Map.ReadObjectSectionSize(newFileBytes, saveType, objectBytes);
+
+            // Calculate the object offset
+            int objectOffset = size + 8;
+            // Retrieve the original number of objects
+            int originalNumObjects = Map.ReadNumberPrimObjects(newFileBytes, objectOffset);
+
+            // Determine the new object section size and number of objects
+            int objectSectionSize = ((newPrimArray.Count + 1) * 8) + 4 + 2048;
+            int numObjects = newPrimArray.Count + 1;
+
+            // Calculate the difference in object count
+            int objectDifference = numObjects - originalNumObjects;
+
+            // Old MapWho Offset
+            int originalMapWhoOffset = objectOffset + 4 + (originalNumObjects * 8);
+
+            // Calculate the new file size
+            int newFileSize = newFileBytes.Length + (objectDifference * 8);
+
+            // Create the new transitory fileBytes containing the updated object data.
+            byte[] swapFileBytes = new byte[newFileSize];
+
+            // Copy existing data up to the object offset
+            Array.Copy(newFileBytes, swapFileBytes, objectOffset);
+
+            // Write the updated object section size in the transitory file
+            Map.WriteObjectSize(swapFileBytes, objectSectionSize);
+
+            // Write new prims
+            Map.WritePrims(swapFileBytes, newPrimArray, objectOffset);
+
+            // Insert the new MapWho data after the object data
+            int mapWhoOffset = objectOffset + 4 + ((newPrimArray.Count + 1) * 8);
+
+            Map.WriteMapWho(swapFileBytes, newMapWhoArray, mapWhoOffset);
+
+            // Copy any remaining data from the original file
+            if (newFileBytes.Length > originalMapWhoOffset + 2048)
+            {
+                Array.Copy(newFileBytes, originalMapWhoOffset + 2048, swapFileBytes, mapWhoOffset + 2048, newFileBytes.Length - (originalMapWhoOffset + 2048));
+            }
+
+            return swapFileBytes;
+        }
+
 
 
         //Show information about the Prim when it's elipse is selected
