@@ -185,16 +185,6 @@ namespace UC_MapPainter
             // Find and remove the prim from the grid model
             gridModel.PrimArray.Remove(prim);
 
-            // Remove the visual elements from the canvas
-            var elementsToRemove = overlayGrid.Children.OfType<UIElement>()
-                .Where(el => Canvas.GetLeft(el) == prim.PixelX - 7.5 && Canvas.GetTop(el) == prim.PixelZ - 7.5)
-                .ToList();
-
-            foreach (var el in elementsToRemove)
-            {
-                overlayGrid.Children.Remove(el);
-            }
-
             // Rebuild MapWho and Prim arrays
             RebuildMapWhoAndPrimArrays(out List<Prim> newPrimArray, out List<MapWho> newMapWhoArray);
 

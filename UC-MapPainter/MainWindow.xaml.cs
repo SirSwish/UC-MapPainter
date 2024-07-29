@@ -435,6 +435,7 @@ namespace UC_MapPainter
                 if (worldSelectionWindow.ShowDialog() == true)
                 {
                     selectedWorldNumber = int.Parse(worldSelectionWindow.SelectedWorld);
+                    Map.WriteTextureWorld(modifiedFileBytes, selectedWorldNumber, Map.ReadMapSaveType(modifiedFileBytes));
                 }
                 else
                 {
