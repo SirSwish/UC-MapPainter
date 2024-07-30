@@ -91,12 +91,6 @@ namespace UC_MapPainter
 
                 for (int i = 0; i < mapWho.Num; i++)
                 {
-                    if (mapWho.Index + i >= gridModel.PrimArray.Count)
-                    {
-                        Console.WriteLine($"Invalid index: MapWhoIndex = {mapWhoIndex}, PrimIndex = {mapWho.Index + i}, PrimArray.Count = {gridModel.PrimArray.Count}");
-                        continue; // Skip invalid indices
-                    }
-
                     var ob = gridModel.PrimArray[mapWho.Index + i];
 
                     int relativeX = ob.X & 0xFF;
@@ -126,6 +120,48 @@ namespace UC_MapPainter
             prim.PixelZ = pixelZ;
             prim.MapWhoIndex = mapWhoIndex;
 
+            if (mainWindow.graphicsEnabled)
+            {
+                DrawPrimGraphic(prim, overlayGrid, pixelX, pixelZ);
+            }
+
+            // Draw the ellipse on the overlay grid
+            var ellipse = new Ellipse
+            {
+                Width = 15,
+                Height = 15,
+                Fill = Brushes.Red,
+                Stroke = Brushes.Black,
+                StrokeThickness = 1
+            };
+
+            Canvas.SetLeft(ellipse, pixelX - ellipse.Width / 2);
+            Canvas.SetTop(ellipse, pixelZ - ellipse.Height / 2);
+
+            Canvas.SetZIndex(ellipse, 1);
+
+            ellipse.MouseLeftButtonDown += (s, e) =>
+            {
+                ShowPrimInfo(prim, mapWhoIndex, mapWhoRow, mapWhoCol, relativeX, relativeZ, globalTileX, globalTileZ, pixelX, pixelZ);
+            };
+
+            ellipse.MouseRightButtonDown += (s, e) =>
+            {
+                // Calculate necessary values
+                int mapWhoRow = 31 - (pixelZ / 256);
+                int mapWhoCol = 31 - (pixelX / 256);
+                int mapWhoIndex = mapWhoCol * 32 + mapWhoRow;
+                RemovePrim(prim, overlayGrid);
+                // Update the MapWhoPrimCounts and TotalPrimCount
+                gridModel.MapWhoPrimCounts[mapWhoIndex]--;
+                gridModel.TotalPrimCount--;
+            };
+
+            overlayGrid.Children.Add(ellipse);
+        }
+
+        public void DrawPrimGraphic(Prim prim, Canvas overlayGrid, int pixelX, int pixelZ)
+        {
             string appBasePath = AppDomain.CurrentDomain.BaseDirectory;
             string topPrimsFolder = System.IO.Path.Combine(appBasePath, "Prims", "TopPrims");
 
@@ -151,35 +187,7 @@ namespace UC_MapPainter
                 overlayGrid.Children.Add(primImage);
                 Canvas.SetZIndex(primImage, 0);
             }
-
-            // Draw the ellipse on the overlay grid
-            var ellipse = new Ellipse
-            {
-                Width = 15,
-                Height = 15,
-                Fill = Brushes.Red,
-                Stroke = Brushes.Black,
-                StrokeThickness = 1
-            };
-
-            Canvas.SetLeft(ellipse, pixelX - ellipse.Width / 2);
-            Canvas.SetTop(ellipse, pixelZ - ellipse.Height / 2);
-
-            Canvas.SetZIndex(ellipse, 1);
-
-            ellipse.MouseLeftButtonDown += (s, e) =>
-            {
-                ShowPrimInfo(prim, mapWhoIndex, mapWhoRow, mapWhoCol, relativeX, relativeZ, globalTileX, globalTileZ, pixelX, pixelZ);
-            };
-
-            ellipse.MouseRightButtonDown += (s, e) =>
-            {
-                RemovePrim(prim, overlayGrid);
-            };
-
-            overlayGrid.Children.Add(ellipse);
         }
-
         public void RemovePrim(Prim prim, Canvas overlayGrid)
         {
             // Find and remove the prim from the grid model
@@ -187,6 +195,9 @@ namespace UC_MapPainter
 
             // Rebuild MapWho and Prim arrays
             RebuildMapWhoAndPrimArrays(out List<Prim> newPrimArray, out List<MapWho> newMapWhoArray);
+
+            // Re-assign the gridModel.MapWhoArray with the newMapWhoArray
+            gridModel.MapWhoArray = newMapWhoArray;
 
             // Calculate the original object offset and objectSectionSize
             int saveType = Map.ReadMapSaveType(mainWindow.ModifiedFileBytes);
@@ -235,7 +246,7 @@ namespace UC_MapPainter
                 Array.Copy(mainWindow.ModifiedFileBytes, originalMapWhoOffset + 2048, swapFileBytes, mapWhoOffset + 2048, mainWindow.ModifiedFileBytes.Length - (originalMapWhoOffset + 2048));
             }
 
-            mainWindow.ModifiedFileBytes = swapFileBytes;
+            mainWindow.ModifiedFileBytes = (byte[])swapFileBytes.Clone();
 
             // Redraw the prims
             DrawPrims(overlayGrid);

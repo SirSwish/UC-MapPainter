@@ -73,6 +73,7 @@ namespace UC_MapPainter
             get { return selectedPrimNumber; }
             set { selectedPrimNumber = value; }
         }
+        public bool graphicsEnabled = true;
 
         //Windows
         public MainWindow()
@@ -80,6 +81,7 @@ namespace UC_MapPainter
             InitializeComponent();
             this.Loaded += MainWindow_Loaded;
             MainContentGrid.LayoutTransform = scaleTransform;
+            OverlayGrid.LayoutTransform = scaleTransform;
             MainContentGrid.MouseMove += MainContentGrid_MouseMove;
             MapWhoGridCanvas.IsHitTestVisible = false;
             MainContentGrid.Children.Add(MapWhoGridCanvas);
@@ -90,7 +92,8 @@ namespace UC_MapPainter
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            
+            // Set the initial state of the GraphicsEnabledCheckBox
+            GraphicsEnabledCheckBox.IsChecked = graphicsEnabled;
         }
         private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
@@ -185,42 +188,6 @@ namespace UC_MapPainter
         private void SaveAsMap_Click(object sender, RoutedEventArgs e)
         {
             SaveAsMap();
-        }
-
-        public void SaveAsMap() 
-        {
-            var saveFileDialog = new SaveFileDialog
-            {
-                Filter = "IAM files (*.iam)|*.iam",
-                Title = "Save Map As",
-                FileName = "ExportedMap.iam"
-            };
-
-            if (saveFileDialog.ShowDialog() == true)
-            {
-                string userFilePath = saveFileDialog.FileName;
-                if (userFilePath.Length > 96)
-                {
-                    var result = MessageBox.Show(
-                        "The file path exceeds the maximum length of 96 characters. Using the load map method of debug mode, the game cannot parse paths longer than 96 characters. Do you still want to save here?",
-                        "File Path Too Long",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Warning);
-
-                    if (result == MessageBoxResult.No)
-                    {
-                        return;
-                    }
-                }
-
-                File.WriteAllBytes(userFilePath, modifiedFileBytes);
-                loadedFilePath = userFilePath; // Store the loaded file path
-                loadedFileBytes = File.ReadAllBytes(userFilePath);
-                modifiedFileBytes = (byte[])loadedFileBytes.Clone(); // New File bytes will be manipulated via edit process
-                UpdateWindowTitle(Path.GetFileName(userFilePath));
-                isNewFile = false;
-                MessageBox.Show($"Map saved to {userFilePath}", "Save Successful", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
         }
 
         private void ExportMapToBmp_Click(object sender, RoutedEventArgs e)
@@ -318,6 +285,14 @@ namespace UC_MapPainter
             selectedTextureRotation = (selectedTextureRotation + 90) % 360;
             ApplyRotation();
         }
+        private void ToggleGraphicsEnabled_Click(object sender, RoutedEventArgs e)
+        {
+            graphicsEnabled = !graphicsEnabled;
+            GraphicsEnabledCheckBox.IsChecked = graphicsEnabled;
+            OverlayGrid.Children.Clear();
+            SetEditMode("Prims");
+            primFunctions.DrawPrims(OverlayGrid);
+        }
 
         ///////////////
         //Events
@@ -365,14 +340,26 @@ namespace UC_MapPainter
                 // Changes were saved, proceed with loading the new map
             }
 
-            // Clear the arrays
+            //Nothing becomes available until the file is fully loaded
+            ModifyButtonStatus(ButtonFlags.None);
+            SaveMenuItem.IsEnabled = false;
+            SaveAsMenuItem.IsEnabled = false;
+            ExportMenuItem.IsEnabled = false;
+
+            // Clear the Prim related arrays and displays if populated from previous load
             gridModel.PrimArray.Clear();
             gridModel.MapWhoArray.Clear();
-            
+            OverlayGrid.Children.Clear();
+
+            // Clear the Texture related displays and cells if populated from previous load
+            MainContentGrid.Children.Clear();
+            MainContentGrid.RowDefinitions.Clear();
+            MainContentGrid.ColumnDefinitions.Clear();
+            gridModel.Cells.Clear();
+
             //Clear selected texture so previous world textures may not persist
             ClearSelectedTexture();
 
-            //Close Windows if open
             // Close the PrimSelectionWindow if it is open
             if (primSelectionWindow != null && primSelectionWindow.IsLoaded)
             {
@@ -387,11 +374,6 @@ namespace UC_MapPainter
                 textureSelectionWindow = null;
             }
 
-            // Clear the MainContentGrid if populated from previous load
-            MainContentGrid.Children.Clear();
-            MainContentGrid.RowDefinitions.Clear();
-            MainContentGrid.ColumnDefinitions.Clear();
-            gridModel.Cells.Clear();
 
             if (isNewFile)
             {
@@ -449,7 +431,7 @@ namespace UC_MapPainter
 
             SaveMenuItem.IsEnabled = true;
             SaveAsMenuItem.IsEnabled = true;
-            ExportMenuItem.IsEnabled = true; // Enable the Export menu item
+            ExportMenuItem.IsEnabled = true;
 
             ModifyButtonStatus(ButtonFlags.All);
         }
@@ -595,14 +577,13 @@ namespace UC_MapPainter
 
                     primFunctions.PlacePrim(newPrim, pixelX, pixelZ, mapWhoIndex, mapWhoRow, mapWhoCol, relativeX, relativeZ, globalTileX, globalTileZ, OverlayGrid);
 
-                    // Reset the selected prim
-                    selectedPrimNumber = -1;
-                    if (primSelectionWindow != null && primSelectionWindow.IsLoaded)
-                    {
-                        primSelectionWindow.UpdateSelectedPrimImage(-1); // Clear the selected prim image
-                    }
+                    // Reset the selected prim - Uncomment to unsticky
+                    //selectedPrimNumber = -1;
+                    //if (primSelectionWindow != null && primSelectionWindow.IsLoaded)
+                    //{
+                    //    primSelectionWindow.UpdateSelectedPrimImage(-1); // Clear the selected prim image
+                    //}
 
-                    //primFunctions.UpdatePrimAndMapWhoSections(modifiedFileBytes, out modifiedFileBytes);
                     //Update MapWho and Object Section
                     primFunctions.RebuildMapWhoAndPrimArrays(out List<Prim> newPrimArray, out List<MapWho> newMapWhoArray);
 
@@ -653,8 +634,8 @@ namespace UC_MapPainter
                     {
                         Array.Copy(modifiedFileBytes, originalMapWhoOffset + 2048, swapFileBytes, mapWhoOffset + 2048, modifiedFileBytes.Length - (originalMapWhoOffset + 2048));
                     }
-
-                   modifiedFileBytes = swapFileBytes;
+                    
+                    modifiedFileBytes = (byte[])swapFileBytes.Clone();
                 }
             }
         }
@@ -797,7 +778,7 @@ namespace UC_MapPainter
             SelectedTextureImage.RenderTransform = transform;
         }
 
-        private async void SetEditMode(string mode)
+        public async void SetEditMode(string mode)
         {
             currentEditMode = mode;
 
@@ -847,9 +828,13 @@ namespace UC_MapPainter
                     if (MainContentGrid.Children.Count == 0)
                     {
                         OverlayGrid.Visibility = Visibility.Collapsed;
-                        await textureFunctions.DrawCells(modifiedFileBytes, selectedWorldNumber);
+                        loadingWindow.TaskDescription = "Loading Textures";
+                        loadingWindow.Show();
+                        textureFunctions.DrawCells(modifiedFileBytes, selectedWorldNumber);
                     }
                     OverlayGrid.Visibility = Visibility.Visible;
+                    // Explicitly await DrawCells before calling ReadObjectData
+                    loadingWindow.TaskDescription = "Loading Prims";
                     await primFunctions.ReadObjectData(modifiedFileBytes, saveType, objectSectionSize);
                     loadingWindow.Close();
                     break;
@@ -862,11 +847,6 @@ namespace UC_MapPainter
         private void DrawMapWhoGrid()
         {
             primFunctions.DrawMapWhoGrid(MapWhoGridCanvas);
-            EnsureMapWhoGridCanvasOnTop();
-        }
-
-        private void EnsureMapWhoGridCanvasOnTop()
-        {
             MainContentGrid.Children.Remove(MapWhoGridCanvas);
             MainContentGrid.Children.Add(MapWhoGridCanvas);
         }
@@ -903,6 +883,41 @@ namespace UC_MapPainter
             return false; // No changes or user chose not to save
         }
 
+        public void SaveAsMap()
+        {
+            var saveFileDialog = new SaveFileDialog
+            {
+                Filter = "IAM files (*.iam)|*.iam",
+                Title = "Save Map As",
+                FileName = "ExportedMap.iam"
+            };
+
+            if (saveFileDialog.ShowDialog() == true)
+            {
+                string userFilePath = saveFileDialog.FileName;
+                if (userFilePath.Length > 96)
+                {
+                    var result = MessageBox.Show(
+                        "The file path exceeds the maximum length of 96 characters. Using the load map method of debug mode, the game cannot parse paths longer than 96 characters. Do you still want to save here?",
+                        "File Path Too Long",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Warning);
+
+                    if (result == MessageBoxResult.No)
+                    {
+                        return;
+                    }
+                }
+
+                File.WriteAllBytes(userFilePath, modifiedFileBytes);
+                loadedFilePath = userFilePath; // Store the loaded file path
+                loadedFileBytes = File.ReadAllBytes(userFilePath);
+                modifiedFileBytes = (byte[])loadedFileBytes.Clone(); // New File bytes will be manipulated via edit process
+                UpdateWindowTitle(Path.GetFileName(userFilePath));
+                isNewFile = false;
+                MessageBox.Show($"Map saved to {userFilePath}", "Save Successful", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
 
     }
 }
