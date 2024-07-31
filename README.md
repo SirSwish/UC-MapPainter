@@ -1,4 +1,5 @@
 # UC-MapPainter
+Urban Chaos Map Editor
 
 ## Overview
 UC-MapPainter is an application used for creating, modifying, and exporting the textures of Urban Chaos map files (.iam files). It loads map files onto a grid and allows cell-by-cell texture editing. All files required to run the application are included.
