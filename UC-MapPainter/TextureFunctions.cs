@@ -185,9 +185,11 @@ namespace UC_MapPainter
             mainWindow.ProgressBar.Visibility = System.Windows.Visibility.Collapsed;
         }
 
-        public string GetTexturePath(string textureType, int textureNumber)
+        public string GetTexturePath(string textureType, int textureNumber, byte[] modifiedFileBytes)
         {
-            string textureFolder = textureType == "world" ? $"world{selectedWorldNumber}" : textureType;
+            int saveType = Map.ReadMapSaveType(modifiedFileBytes);
+            int mapWorld = Map.ReadTextureWorld(modifiedFileBytes,saveType);
+            string textureFolder = textureType == "world" ? $"world{mapWorld}" : textureType;
             return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Textures", textureFolder, $"tex{textureNumber:D3}hi.bmp");
         }
 

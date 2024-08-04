@@ -745,7 +745,7 @@ namespace UC_MapPainter
             {
                 foreach (var cell in gridModel.Cells)
                 {
-                    var texturePath = textureFunctions.GetTexturePath(cell.TextureType, cell.TextureNumber);
+                    var texturePath = textureFunctions.GetTexturePath(cell.TextureType, cell.TextureNumber, modifiedFileBytes);
                     if (File.Exists(texturePath))
                     {
                         var imageSource = new BitmapImage(new Uri(texturePath));
