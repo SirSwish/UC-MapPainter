@@ -75,6 +75,9 @@ namespace UC_MapPainter
         }
         public bool graphicsEnabled = true;
 
+        //Buildings
+        private BuildingFunctions buildingFunctions;
+
         //Windows
         public MainWindow()
         {
@@ -87,6 +90,7 @@ namespace UC_MapPainter
             MainContentGrid.Children.Add(MapWhoGridCanvas);
             primFunctions = new PrimFunctions(this, gridModel, primSelectionWindow);
             textureFunctions = new TextureFunctions(gridModel, selectedWorldNumber, this);
+            buildingFunctions = new BuildingFunctions(primFunctions, this); // Initialize buildingFunctions
             this.Closing += MainWindow_Closing; // Add this line
         }
 
@@ -235,7 +239,13 @@ namespace UC_MapPainter
 
         private void EditBuildingsButton_Click(object sender, RoutedEventArgs e)
         {
-            //SetEditMode("Height");
+            if (modifiedFileBytes == null)
+            {
+                MessageBox.Show("No map file loaded. Please load a map file first.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            buildingFunctions.DumpBuildingData();
         }
 
         private void EditPrimsButton_Click(object sender, RoutedEventArgs e)
@@ -689,10 +699,13 @@ namespace UC_MapPainter
 
                 if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
                 {
+                    
                     int row = 127 - Grid.GetRow(cell);
                     int col = 127 - Grid.GetColumn(cell);
 
                     var cellData = gridModel.Cells.FirstOrDefault(c => c.Row == row && c.Column == col);
+                    int cellOffset = textureFunctions.FindCellTexOffset(col, row);
+                    byte[] cellBytes = Map.ReadTextureCell(modifiedFileBytes,cellOffset);
                     if (cellData != null)
                     {
                         string textureFolder = cellData.TextureType == "world" ? $"world{selectedWorldNumber}" : cellData.TextureType;
@@ -705,7 +718,7 @@ namespace UC_MapPainter
                                               $"Texture Type: {cellData.TextureType}\n" +
                                               $"Rotation: {cellData.Rotation}°\n" +
                                               $"Height: {cellData.Height}\n" +
-                                              $"Tile Bytes: {BitConverter.ToString(cellData.TileSequence)}"; // Use the stored tile bytes
+                                              $"Tile Bytes: {BitConverter.ToString(cellBytes)}"; // Use the stored tile bytes
                         MessageBox.Show(debugMessage, "Cell Debug Information", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
                 }

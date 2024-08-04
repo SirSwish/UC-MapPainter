@@ -11,10 +11,12 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                 <Button x:Name="RotateLeftButton" Content="⟲" Width="30" Height="30" Margin="5" Click="RotateLeftButton_Click" />
                 <Button x:Name="RotateRightButton" Content="⟳" Width="30" Height="30" Margin="5" Click="RotateRightButton_Click" />
-                <Button x:Name="AdjustHeightButton" Content="Adjust Height" Width="100" Height="30" Margin="5" Click="AdjustHeightButton_Click" />
+                <Button x:Name="RotateLeft90Button" Content="⟲ 90°" Width="50" Height="30" Margin="5" Click="RotateLeft90Button_Click" />
+                <Button x:Name="RotateRight90Button" Content="⟳ 90°" Width="50" Height="30" Margin="5" Click="RotateRight90Button_Click" />
+                <Button x:Name="RestoreRotationButton" Content="Restore Rotation" Width="100" Height="30" Margin="5" Click="RestoreRotationButton_Click" />
             </StackPanel>
             <!-- New UI Elements for Height Adjustment -->
-            <StackPanel Orientation="Vertical" Margin="10" Visibility="Collapsed" x:Name="HeightAdjustmentPanel">
+            <StackPanel Orientation="Vertical" Margin="10" x:Name="HeightAdjustmentPanel">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="Height:" VerticalAlignment="Center" Margin="5"/>
                     <Button Content="-" Width="30" Click="DecreaseHeight_Click" />

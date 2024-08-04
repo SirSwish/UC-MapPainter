@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -25,6 +24,7 @@ namespace UC_MapPainter
         {
             LoadPrimButtons();
         }
+
         private void LoadPrimButtons()
         {
             string appBasePath = AppDomain.CurrentDomain.BaseDirectory;
@@ -143,7 +143,6 @@ namespace UC_MapPainter
             return flags;
         }
 
-
         private void Prim_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             if (sender is Border border && border.Child is TextBlock textBlock)
@@ -174,13 +173,33 @@ namespace UC_MapPainter
             yaw = (byte)((yaw + 1) % 256); // Increase yaw by 1 and wrap around
             ApplyRotation();
         }
+
+        private void RotateLeft90Button_Click(object sender, RoutedEventArgs e)
+        {
+            yaw = (byte)((yaw - 64 + 256) % 256); // Decrease yaw by 90 and wrap around
+            ApplyRotation();
+        }
+
+        private void RotateRight90Button_Click(object sender, RoutedEventArgs e)
+        {
+            yaw = (byte)((yaw + 64) % 256); // Increase yaw by 90 and wrap around
+            ApplyRotation();
+        }
+
+        private void RestoreRotationButton_Click(object sender, RoutedEventArgs e)
+        {
+            yaw = 0; // Reset yaw to 0
+            ApplyRotation();
+        }
+
         private void ApplyRotation()
         {
             if (SelectedPrimImage.Source != null)
             {
                 double rotationAngle = -((yaw / 255.0) * 360);
-                var rotateTransform = new RotateTransform(rotationAngle, 32, 32);
+                var rotateTransform = new RotateTransform(rotationAngle);
                 SelectedPrimImage.RenderTransform = rotateTransform;
+                SelectedPrimImage.RenderTransformOrigin = new System.Windows.Point(0.5, 0.5); // Set the origin to the center
             }
         }
 
@@ -192,14 +211,6 @@ namespace UC_MapPainter
         public short GetCurrentHeight()
         {
             return height;
-        }
-
-        private void AdjustHeightButton_Click(object sender, RoutedEventArgs e)
-        {
-            HeightAdjustmentPanel.Visibility = Visibility.Visible;
-            HeightSlider.Value = height;
-            HeightTextBox.Text = height.ToString();
-            UpdateStoreyLabel();
         }
 
         private void HeightSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

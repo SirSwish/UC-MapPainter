@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace UC_MapPainter
 {
@@ -16,6 +17,7 @@ namespace UC_MapPainter
 
     public static class Map
     {
+        public static readonly int HeaderSize = 8;
         public static readonly int TextureDataSize = 98304; // 6 * (128 * 128)
         public static readonly int BuildingDataOffset = 98312; // 8 bytes header + texture data size
         public static readonly int MapWhoSize = 1024; // 32 * 32 entries
@@ -58,6 +60,16 @@ namespace UC_MapPainter
             byte[] textureData = new byte[TextureDataSize];
             Array.Copy(fileBytes, 8, textureData, 0, TextureDataSize);
             return textureData;
+        }
+
+        // Read a single Cell based off an X,Z offset.
+        public static byte[] ReadTextureCell(byte[] fileBytes, int offset)
+        {
+            // Read 6 bytes from the offset of fileBytes from offset + header size (8)
+            byte[] cellBytes = new byte[6];
+            Array.Copy(fileBytes, offset + HeaderSize, cellBytes, 0, 6);
+
+            return cellBytes;
         }
 
         //Read Walls/Building data
@@ -162,7 +174,7 @@ namespace UC_MapPainter
         //Write the new textures and height data to buffer
         public static void WriteTextureData(byte[] newFileBytes, byte[] newTextureData, int offset)
         {
-            Array.Copy(newTextureData, 0, newFileBytes, 8 + offset, 6);
+            Array.Copy(newTextureData, 0, newFileBytes, HeaderSize + offset, 6);
         }
 
         public static void WriteHeightData(byte[] newFileBytes, byte height, int offset)
