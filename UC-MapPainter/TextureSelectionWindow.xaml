@@ -54,6 +54,10 @@
             <!-- World Sky -->
             <TextBlock Text="World Sky" FontWeight="Bold" Margin="0,0,0,5"/>
             <Image Name="WorldSkyImage" Width="128" Height="128" Margin="0,0,0,10"/>
+
+            <!-- View/Edit Wall Styles Button -->
+            <TextBlock Text="Wall Textures" FontWeight="Bold" Margin="0,0,0,5"/>
+            <Button Name="ViewEditWallStylesButton" Content="View / Edit Wall Styles" Click="ViewEditWallStylesButton_Click" Margin="0,0,0,10"/>
         </StackPanel>
     </ScrollViewer>
 </Window>

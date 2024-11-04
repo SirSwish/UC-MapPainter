@@ -11,6 +11,7 @@ using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using System.Collections.Generic;
 using Path = System.IO.Path;
+using System.Windows.Data;
 
 namespace UC_MapPainter
 {
@@ -19,7 +20,7 @@ namespace UC_MapPainter
         //UI
         public string currentEditMode;
         private ScaleTransform scaleTransform = new ScaleTransform();
-        private GridModel gridModel = new GridModel();
+        
         [Flags]
         public enum ButtonFlags
         {
@@ -28,7 +29,8 @@ namespace UC_MapPainter
             Height = 1 << 1,
             Buildings = 1 << 2,
             Prims = 1 << 3,
-            All = Textures | Height | Buildings | Prims
+            Lights = 1 << 4,
+            All = Textures | Height | Buildings | Prims | Lights
         }
 
         //Map
@@ -68,6 +70,8 @@ namespace UC_MapPainter
         private int selectedPrimNumber = -1;
         private Canvas MapWhoGridCanvas = new Canvas();
         private bool isMapWhoGridVisible = false;
+        private GridModel gridModel = new GridModel();
+
         public int SelectedPrimNumber
         {
             get { return selectedPrimNumber; }
@@ -77,6 +81,52 @@ namespace UC_MapPainter
 
         //Buildings
         private BuildingFunctions buildingFunctions;
+
+        //Lights
+        internal LightSelectionWindow lightSelectionWindow;
+        public LightFunctions lightFunctions;
+        public string loadedLightFilePath = string.Empty;
+        public byte[] modifiedLightFileBytes;
+        public byte[] loadedLightFileBytes;
+        public List<LightEntry> lightEntries = new List<LightEntry>();
+        public int EdLightFree = 0; // Tracks the first free LightEntry index
+        public LightHeader lightHeader = new LightHeader();
+        public LightProperties lightProperties = new LightProperties();
+        public LightNightColour lightNightColor = new LightNightColour();
+        public byte[] LoadedLightFileBytes
+        {
+            get { return loadedFileBytes; }
+            set { loadedFileBytes = value; }
+        }
+        public string LoadedLightFilePath
+        {
+            get { return loadedFilePath; }
+            set { loadedFilePath = value; }
+        }
+        public byte[] ModifiedLightFileBytes
+        {
+            get { return modifiedFileBytes; }
+            set { modifiedFileBytes = value; }
+        }
+        public uint NightFlag { get; set; }
+        public byte D3DAlpha { get; set; }
+        public byte D3DRed { get; set; }
+        public byte D3DGreen { get; set; }
+        public byte D3DBlue { get; set; }
+        public byte SpecularAlpha { get; set; }
+        public byte SpecularRed { get; set; }
+        public byte SpecularGreen { get; set; }
+        public byte SpecularBlue { get; set; }
+        public int NightAmbRed { get; set; }
+        public int NightAmbGreen { get; set; }
+        public int NightAmbBlue { get; set; }
+        public sbyte NightLampostRed { get; set; }
+        public sbyte NightLampostGreen { get; set; }
+        public sbyte NightLampostBlue { get; set; }
+        public int NightLampostRadius { get; set; }
+        public byte NightSkyRed { get; set; }
+        public byte NightSkyGreen { get; set; }
+        public byte NightSkyBlue { get; set; }
 
         //Windows
         public MainWindow()
@@ -89,6 +139,7 @@ namespace UC_MapPainter
             MapWhoGridCanvas.IsHitTestVisible = false;
             MainContentGrid.Children.Add(MapWhoGridCanvas);
             primFunctions = new PrimFunctions(this, gridModel, primSelectionWindow);
+            lightFunctions = new LightFunctions(this, lightSelectionWindow);
             textureFunctions = new TextureFunctions(gridModel, selectedWorldNumber, this);
             buildingFunctions = new BuildingFunctions(primFunctions, this); // Initialize buildingFunctions
             this.Closing += MainWindow_Closing; // Add this line
@@ -119,6 +170,32 @@ namespace UC_MapPainter
                 PrimSelectionMenuItem.IsEnabled = false; // Disable the menu item
             }
         }
+
+        private void InitializeLightSelectionWindow()
+        {
+            if (lightSelectionWindow == null || !lightSelectionWindow.IsLoaded)
+            {
+                lightSelectionWindow = new LightSelectionWindow();
+                lightSelectionWindow.SetMainWindow(this);
+                lightSelectionWindow.Left = this.Left + this.Width - lightSelectionWindow.Width - 10;
+                lightSelectionWindow.Top = 50;
+                lightSelectionWindow.Closed += LightSelectionWindow_Closed;
+                lightSelectionWindow.Show();
+                lightSelectionWindow.Owner = this; // Set the owner after showing the window
+                LightSelectionMenuItem.IsEnabled = false; // Disable the menu item
+                lightFunctions = new LightFunctions(this, lightSelectionWindow);
+            }
+
+            if (!lightSelectionWindow.IsVisible)
+            {
+                lightSelectionWindow.Show();
+            }
+            else
+            {
+                lightSelectionWindow.Activate();
+            }
+        }
+
         private void InitializeTextureSelectionWindow()
         {
             if (textureSelectionWindow == null || !textureSelectionWindow.IsLoaded)
@@ -153,6 +230,11 @@ namespace UC_MapPainter
         private void TextureSelection_Click(object sender, RoutedEventArgs e)
         {
             InitializeTextureSelectionWindow();
+        }
+
+        private void LightSelection_Click(object sender, RoutedEventArgs e)
+        {
+            InitializeLightSelectionWindow();
         }
 
         private async void NewMap_Click(object sender, RoutedEventArgs e)
@@ -229,11 +311,23 @@ namespace UC_MapPainter
 
         private void EditTextureButton_Click(object sender, RoutedEventArgs e)
         {
+            if (modifiedFileBytes == null)
+            {
+                MessageBox.Show("No map file loaded. Please load a map file first.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
             SetEditMode("Textures");
         }
 
         private void EditHeightButton_Click(object sender, RoutedEventArgs e)
         {
+            if (modifiedFileBytes == null)
+            {
+                MessageBox.Show("No map file loaded. Please load a map file first.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
             SetEditMode("Height");
         }
 
@@ -245,7 +339,11 @@ namespace UC_MapPainter
                 return;
             }
 
-            buildingFunctions.DumpBuildingData();
+            OverlayGrid.Visibility = Visibility.Visible;
+            // Call the DrawBuildings method to visualize the buildings
+            SetEditMode("Buildings");
+            buildingFunctions.DrawBuildings(modifiedFileBytes, OverlayGrid);
+            
         }
 
         private void EditPrimsButton_Click(object sender, RoutedEventArgs e)
@@ -254,6 +352,63 @@ namespace UC_MapPainter
             InitializePrimSelectionWindow();
             primFunctions.DrawPrims(OverlayGrid);
         }
+        private void EditLightsButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Load the embedded resource Light/blank.lgt
+            try
+            {
+                // Get the executing assembly
+                var assembly = Assembly.GetExecutingAssembly();
+
+                // Build the resource name
+                // Adjust the namespace and path according to your project's structure
+                string resourceName = "UC_MapPainter.Light.blank.lgt";
+
+                // Get the resource stream
+                using (Stream stream = assembly.GetManifestResourceStream(resourceName))
+                {
+                    if (stream == null)
+                    {
+                        MessageBox.Show($"Could not find embedded resource '{resourceName}'.", "Resource Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    using (MemoryStream memoryStream = new MemoryStream())
+                    {
+                        stream.CopyTo(memoryStream);
+                        loadedLightFileBytes = memoryStream.ToArray();
+                    }
+                }
+
+                // Clone the loaded bytes for modification
+                modifiedLightFileBytes = (byte[])loadedLightFileBytes.Clone();
+
+                // Initialize the LightSelectionWindow
+                InitializeLightSelectionWindow();
+
+                // Set the edit mode to "Lights"
+                SetEditMode("Lights");
+
+                // Read light data from the loaded file
+                lightHeader = lightFunctions.ReadLightHeader(modifiedLightFileBytes);
+                lightEntries = lightFunctions.ReadLightEntries(modifiedLightFileBytes);
+                lightProperties = lightFunctions.ReadLightProperties(modifiedLightFileBytes);
+                lightNightColor = lightFunctions.ReadLightNightColour(modifiedLightFileBytes);
+
+                // Pass extracted data to the LightSelectionWindow
+                lightSelectionWindow.SetLightProperties(lightProperties);
+                lightSelectionWindow.SetLightNightColour(lightNightColor);
+                lightSelectionWindow.SetLightEntries(lightEntries);
+
+                // Draw lights on the map
+                lightFunctions.DrawLights(OverlayGrid, lightEntries);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"An error occurred while loading the embedded light file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
 
         private void ToggleMapWhoGridMenuItem_Click(object sender, RoutedEventArgs e)
         {
@@ -303,6 +458,172 @@ namespace UC_MapPainter
             SetEditMode("Prims");
             primFunctions.DrawPrims(OverlayGrid);
         }
+        
+        // Event handler for viewing Building Header information
+        private void ViewBuildingHeader_Click(object sender, RoutedEventArgs e)
+        {
+            if (modifiedFileBytes == null)
+            {
+                MessageBox.Show("No map file loaded. Please load a map file first.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            // Read Building Header
+            var buildingHeader = BuildingHeader.ReadFromBytes(modifiedFileBytes, Map.BuildingDataOffset);
+
+            // Show header details in a simple message box for now
+            MessageBox.Show(
+                $"Total Buildings: {buildingHeader.TotalBuildings}\n" +
+                $"Total Walls: {buildingHeader.TotalWalls}",
+                "Building Header Information",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
+        }
+
+        // Stub for viewing Buildings
+        private void ViewBuildings_Click(object sender, RoutedEventArgs e)
+        {
+            if (modifiedFileBytes == null)
+            {
+                MessageBox.Show("No map file loaded. Please load a map file first.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            try
+            {
+                // Extract Building Header
+                int buildingHeaderOffset = Map.BuildingDataOffset;
+                byte[] buildingHeader = new byte[48];
+                Array.Copy(modifiedFileBytes, buildingHeaderOffset, buildingHeader, 0, 48);
+
+                // Read total number of buildings from the header (subtracting 1 as per your understanding)
+                int totalBuildings = BitConverter.ToUInt16(buildingHeader, 2) - 1;
+
+                // Read the buildings data
+                int buildingDataOffset = buildingHeaderOffset + 48; // Header size + Padding
+                List<Building> buildings = new List<Building>();
+
+                for (int i = 0; i < totalBuildings; i++)
+                {
+                    Building building = Building.ReadBuilding(modifiedFileBytes, buildingDataOffset + i * 24);
+                    buildings.Add(building);
+                }
+
+                // Create a new window to display the buildings
+                Window buildingWindow = new Window
+                {
+                    Title = "Buildings",
+                    Width = 600,
+                    Height = 400,
+                    Content = CreateBuildingsDataGrid(buildings)
+                };
+                buildingWindow.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to load building data: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // Stub for viewing Walls
+        private void ViewWalls_Click(object sender, RoutedEventArgs e)
+        {
+            if (modifiedFileBytes == null)
+            {
+                MessageBox.Show("No map file loaded. Please load a map file first.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            try
+            {
+                // Extract Building Header
+                int buildingHeaderOffset = Map.BuildingDataOffset;
+                byte[] buildingHeader = new byte[48];
+                Array.Copy(modifiedFileBytes, buildingHeaderOffset, buildingHeader, 0, 48);
+
+                // Read total number of buildings from the header (subtracting 1 as per your understanding)
+                int totalBuildings = BitConverter.ToUInt16(buildingHeader, 2) - 1;
+
+                // Calculate the walls section offset
+                int wallDataOffset = buildingHeaderOffset + 48 + (totalBuildings * 24) + 14;
+
+                // Read total number of walls from the header (subtracting 1 as per your understanding)
+                int totalWalls = BitConverter.ToUInt16(buildingHeader, 4) - 1;
+
+                // Read the walls data
+                List<Wall> walls = new List<Wall>();
+
+                for (int i = 0; i < totalWalls; i++)
+                {
+                    Wall wall = Wall.ReadWall(modifiedFileBytes, wallDataOffset + i * 26);
+                    walls.Add(wall);
+                }
+
+                // Create a new window to display the walls
+                Window wallWindow = new Window
+                {
+                    Title = "Walls",
+                    Width = 800,
+                    Height = 600,
+                    Content = CreateWallsDataGrid(walls)
+                };
+                wallWindow.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to load wall data: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DumpBuildingData_Click(object sender, RoutedEventArgs e)
+        {
+           
+                if (modifiedFileBytes == null)
+                {
+                    MessageBox.Show("No map file loaded. Please load a map file first.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+                buildingFunctions.DumpBuildingData();
+            
+        }
+
+        private void ViewRawBuildingData_Click(object sender, RoutedEventArgs e)
+        {
+            if (modifiedFileBytes == null)
+            {
+                MessageBox.Show("No map file loaded. Please load a map file first.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            try
+            {
+                // Use the overloaded DumpBuildingData method to get building data as text
+                string rawDataText = buildingFunctions.DumpBuildingData(true);
+
+                // Show raw data in a text box popup
+                Window rawDataWindow = new Window
+                {
+                    Title = "Raw Building Data",
+                    Width = 600,
+                    Height = 400,
+                    Content = new TextBox
+                    {
+                        Text = rawDataText,
+                        IsReadOnly = true,
+                        VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                        HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                        TextWrapping = TextWrapping.Wrap  // Enable text wrapping
+                    }
+                };
+
+                rawDataWindow.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to load raw building data: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
 
         ///////////////
         //Events
@@ -310,6 +631,10 @@ namespace UC_MapPainter
         private void PrimSelectionWindow_Closed(object sender, EventArgs e)
         {
             PrimSelectionMenuItem.IsEnabled = true; // Enable the menu item when the window is closed
+        }
+        private void LightSelectionWindow_Closed(object sender, EventArgs e)
+        {
+            LightSelectionMenuItem.IsEnabled = true; // Enable the menu item when the window is closed
         }
 
         private void TextureSelectionWindow_Closed(object sender, EventArgs e)
@@ -341,6 +666,85 @@ namespace UC_MapPainter
         //////////////////
         /// Miscellaneous
         /////////////////
+
+        // Helper function to create a DataGrid for displaying buildings
+        private DataGrid CreateWallsDataGrid(List<Wall> walls)
+        {
+            DataGrid dataGrid = new DataGrid
+            {
+                AutoGenerateColumns = false,
+                CanUserAddRows = false,
+                IsReadOnly = true,
+                HeadersVisibility = DataGridHeadersVisibility.Column,
+                SelectionMode = DataGridSelectionMode.Single,
+                SelectionUnit = DataGridSelectionUnit.FullRow
+            };
+
+            dataGrid.Columns.Add(new DataGridTextColumn { Header = "Wall #", Binding = new Binding("WallNumber") });
+            dataGrid.Columns.Add(new DataGridTextColumn { Header = "Wall Type", Binding = new Binding("WallTypeDescription") });
+            dataGrid.Columns.Add(new DataGridTextColumn { Header = "Wall Height (Storeys)", Binding = new Binding("WallHeightStoreys") });
+            dataGrid.Columns.Add(new DataGridTextColumn { Header = "X1", Binding = new Binding("X1") });
+            dataGrid.Columns.Add(new DataGridTextColumn { Header = "X2", Binding = new Binding("X2") });
+            dataGrid.Columns.Add(new DataGridTextColumn { Header = "Z1", Binding = new Binding("Z1") });
+            dataGrid.Columns.Add(new DataGridTextColumn { Header = "Z2", Binding = new Binding("Z2") });
+            dataGrid.Columns.Add(new DataGridTextColumn { Header = "Start Storey", Binding = new Binding("StartStorey") });
+            dataGrid.Columns.Add(new DataGridTextColumn { Header = "Climbable", Binding = new Binding("IsClimbable") });
+            dataGrid.Columns.Add(new DataGridTextColumn { Header = "Scale", Binding = new Binding("Scale") });
+            dataGrid.Columns.Add(new DataGridTextColumn { Header = "Raw Data", Binding = new Binding("RawDataHex") });
+
+            dataGrid.ItemsSource = walls;
+            return dataGrid;
+        }
+        private DataGrid CreateBuildingsDataGrid(List<Building> buildings)
+        {
+            DataGrid dataGrid = new DataGrid
+            {
+                AutoGenerateColumns = false,
+                CanUserAddRows = false,
+                IsReadOnly = true,
+                ItemsSource = buildings
+            };
+
+            // Define columns for the DataGrid
+            dataGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Starting Wall Index",
+                Binding = new Binding("StartingWallIndex"),
+                Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+            });
+
+            dataGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Ending Wall Index",
+                Binding = new Binding("EndingWallIndex"),
+                Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+            });
+
+            dataGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Roof Type",
+                Binding = new Binding("Roof"),
+                Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+            });
+
+            dataGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Building Type",
+                Binding = new Binding("Type"),
+                Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+            });
+
+            // Add a new column for raw data in hex format
+            dataGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Raw Data",
+                Binding = new Binding("RawDataHex"),
+                Width = new DataGridLength(2, DataGridLengthUnitType.Star)
+            });
+
+            return dataGrid;
+        }
+
 
         private async void LoadAsync(string filePath)
         {
@@ -647,6 +1051,62 @@ namespace UC_MapPainter
                     
                     modifiedFileBytes = (byte[])swapFileBytes.Clone();
                 }
+
+                else if (currentEditMode == "Lights")
+                {
+                    // Calculate necessary position values
+                    int relativeX = pixelX;
+                    int relativeZ = pixelZ;
+
+                    // Prepare the new LightEntry with values from LightSelectionWindow sliders
+                    LightEntry newLightEntry = new LightEntry
+                    {
+                        Range = (byte)lightSelectionWindow.RangeSlider.Value,
+                        Red = (sbyte)lightSelectionWindow.RedSlider.Value,
+                        Green = (sbyte)lightSelectionWindow.GreenSlider.Value,
+                        Blue = (sbyte)lightSelectionWindow.BlueSlider.Value,
+                        X = (8192 - relativeX) * 4,
+                        Y = (int)(lightSelectionWindow.YStoreysSlider.Value * 256),
+                        Z = (8192 - relativeZ) * 4,
+                        Used = 1
+                    };
+
+                    // Check for an available slot or unused entry to overwrite
+                    int availableIndex = lightEntries.FindIndex(entry => entry.Used == 0);
+                    if (availableIndex != -1)
+                    {
+                        // Overwrite the unused entry
+                        lightEntries[availableIndex] = newLightEntry;
+
+                        // Update EdLightFree to be 1-based and point to the next available slot
+                        int nextAvailableIndex = lightEntries.FindIndex(entry => entry.Used == 0);
+                        EdLightFree = nextAvailableIndex != -1 ? nextAvailableIndex + 1 : 0;
+                    }
+                    else if (lightEntries.Count < 255)
+                    {
+                        // Add the new entry if there’s space under 256 entries
+                        lightEntries.Add(newLightEntry);
+
+                        // Update EdLightFree to point to the next available slot in 1-based terms
+                        int nextAvailableIndex = lightEntries.FindIndex(entry => entry.Used == 0);
+                        EdLightFree = nextAvailableIndex != -1 ? nextAvailableIndex + 1 : 0;
+                    }
+                    else
+                    {
+                        // Refuse addition if all entries are used and no free slots are left
+                        MessageBox.Show("Cannot add more lights. All 255 LightEntries are in use.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
+                    // Update the LightSelectionWindow UI
+                    if (lightSelectionWindow != null && lightSelectionWindow.IsLoaded)
+                    {
+                        lightSelectionWindow.SetLightEntries(lightEntries);
+                    }
+
+                    // Draw all lights on the OverlayGrid to update the map view
+                    lightFunctions.DrawLights(OverlayGrid, lightEntries);
+                }
             }
         }
 
@@ -694,7 +1154,11 @@ namespace UC_MapPainter
                 }
                 else if (currentEditMode == "Prims")
                 {
-                   //do something
+                    //do something
+                }
+                else if (currentEditMode == "Lights")
+                {
+                    //do something
                 }
 
                 if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
@@ -731,6 +1195,7 @@ namespace UC_MapPainter
             EditHeightButton.IsEnabled = (flags & ButtonFlags.Height) != 0;
             EditBuildingsButton.IsEnabled = (flags & ButtonFlags.Buildings) != 0;
             EditPrimsButton.IsEnabled = (flags & ButtonFlags.Prims) != 0;
+            EditLightsButton.IsEnabled = (flags & ButtonFlags.Lights) != 0;
         }
         private void ExportMapToBmp(string filePath)
         {
@@ -758,8 +1223,10 @@ namespace UC_MapPainter
                 }
             }
 
+            // Render the drawing to the RenderTargetBitmap
             renderTargetBitmap.Render(drawingVisual);
 
+            // Save the BMP version
             using (var fileStream = new FileStream(filePath, FileMode.Create))
             {
                 var bitmapEncoder = new BmpBitmapEncoder();
@@ -767,7 +1234,16 @@ namespace UC_MapPainter
                 bitmapEncoder.Save(fileStream);
             }
 
-            MessageBox.Show($"Map exported to {filePath}", "Export Successful", MessageBoxButton.OK, MessageBoxImage.Information);
+            // Save the PNG version
+            string pngFilePath = Path.ChangeExtension(filePath, ".png");
+            using (var fileStream = new FileStream(pngFilePath, FileMode.Create))
+            {
+                var pngEncoder = new PngBitmapEncoder();
+                pngEncoder.Frames.Add(BitmapFrame.Create(renderTargetBitmap));
+                pngEncoder.Save(fileStream);
+            }
+
+            MessageBox.Show($"Map exported to {filePath} and {pngFilePath}", "Export Successful", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         public void UpdateSelectedTexture(ImageSource newTexture, string type, int number)
@@ -805,7 +1281,7 @@ namespace UC_MapPainter
                     textureSelectionWindow.SetSelectedWorld(selectedWorldNumber);
                     textureSelectionWindow.LockWorld();
                     textureSelectionWindow.LoadWorldTextures(selectedWorldNumber);
-                    ModifyButtonStatus(ButtonFlags.Height | ButtonFlags.Buildings | ButtonFlags.Prims);
+                    ModifyButtonStatus(ButtonFlags.Height | ButtonFlags.Buildings | ButtonFlags.Prims | ButtonFlags.Lights);
                     OverlayGrid.Visibility = Visibility.Collapsed;
                     ClearSelectedTexture();
                     loadingWindow.TaskDescription = "Loading Textures";
@@ -814,7 +1290,7 @@ namespace UC_MapPainter
                     loadingWindow.Close();
                     break;
                 case "Height":
-                    ModifyButtonStatus(ButtonFlags.Textures | ButtonFlags.Buildings | ButtonFlags.Prims);
+                    ModifyButtonStatus(ButtonFlags.Textures | ButtonFlags.Buildings | ButtonFlags.Prims | ButtonFlags.Lights);
                     OverlayGrid.Visibility = Visibility.Collapsed;
                     loadingWindow.TaskDescription = "Loading Heights";
                     loadingWindow.Show();
@@ -823,12 +1299,22 @@ namespace UC_MapPainter
                     loadingWindow.Close();
                     break;
                 case "Buildings":
-                    ModifyButtonStatus(ButtonFlags.Textures | ButtonFlags.Height | ButtonFlags.Prims);
-                    OverlayGrid.Visibility = Visibility.Collapsed;
+                    ModifyButtonStatus(ButtonFlags.Textures | ButtonFlags.Height | ButtonFlags.Prims | ButtonFlags.Lights);
+                    if (MainContentGrid.Children.Count == 0)
+                    {
+                        OverlayGrid.Visibility = Visibility.Collapsed;
+                        loadingWindow.TaskDescription = "Loading Textures";
+                        loadingWindow.Show();
+                        textureFunctions.DrawCells(modifiedFileBytes, selectedWorldNumber);
+                    }
+                    loadingWindow.TaskDescription = "Loading Buildings";
+                    loadingWindow.Show();
+                    loadingWindow.Close();
+                    OverlayGrid.Visibility = Visibility.Visible;
                     ClearSelectedTexture();
                     break;
                 case "Prims":
-                    ModifyButtonStatus(ButtonFlags.Textures | ButtonFlags.Height | ButtonFlags.Buildings);
+                    ModifyButtonStatus(ButtonFlags.Textures | ButtonFlags.Height | ButtonFlags.Buildings | ButtonFlags.Lights);
                     ClearSelectedTexture();
                     InitializePrimSelectionWindow(); // Open the PrimNumber Selection Window
                     // Get Save Type
@@ -850,6 +1336,16 @@ namespace UC_MapPainter
                     loadingWindow.TaskDescription = "Loading Prims";
                     await primFunctions.ReadObjectData(modifiedFileBytes, saveType, objectSectionSize);
                     loadingWindow.Close();
+                    break;
+                case "Lights":
+                    ModifyButtonStatus(ButtonFlags.Textures | ButtonFlags.Height | ButtonFlags.Buildings | ButtonFlags.Prims);
+                    if (MainContentGrid.Children.Count == 0)
+                    {
+                        loadingWindow.TaskDescription = "Loading Textures";
+                        loadingWindow.Show();
+                        textureFunctions.DrawCells(modifiedFileBytes, selectedWorldNumber);
+                        loadingWindow.Close();
+                    }
                     break;
                 default:
                     ModifyButtonStatus(ButtonFlags.All); // Enable all buttons by default

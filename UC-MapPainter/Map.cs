@@ -21,6 +21,9 @@ namespace UC_MapPainter
         public static readonly int TextureDataSize = 98304; // 6 * (128 * 128)
         public static readonly int BuildingDataOffset = 98312; // 8 bytes header + texture data size
         public static readonly int MapWhoSize = 1024; // 32 * 32 entries
+        public static readonly int BuildingHeaderSize = 48; //Size of the header section in the building data
+        public static readonly int BuildingPaddingSize = 14; //Size of the padding
+        public static readonly int WallPaddingSize = 14; //Size of the padding
 
         //////////////////////////////
         /// MAP READ FUNCTIONS  //////
@@ -80,6 +83,17 @@ namespace UC_MapPainter
             Array.Copy(fileBytes, BuildingDataOffset, buildingData, 0, buildingDataSize);
             return buildingData;
         }
+        public static BuildingHeader ReadBuildingHeader(byte[] fileBytes, int offset)
+        {
+            return BuildingHeader.ReadFromBytes(fileBytes, offset);
+        }
+
+        public static List<Building> ReadBuildings(byte[] fileBytes, int offset, int totalBuildings)
+        {
+            int buildingDataOffset = offset + BuildingHeaderSize + BuildingPaddingSize;
+            return Building.ReadBuildings(fileBytes, buildingDataOffset, totalBuildings);
+        }
+
 
         //Read just the number of objects
         public static int ReadNumberPrimObjects(byte[] fileBytes, int objectOffset)

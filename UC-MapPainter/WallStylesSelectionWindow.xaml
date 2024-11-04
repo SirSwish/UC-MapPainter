@@ -1,0 +1,57 @@
+﻿<Window x:Class="UC_MapPainter.WallStylesSelectionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Wall Styles Selection" Height="800" Width="600"
+        WindowStyle="ToolWindow">
+
+    <StackPanel Margin="10">
+        <!-- Load and Save Buttons -->
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+            <Button Name="LoadTmaButton" Content="Load TMA" Width="100" Click="LoadTmaButton_Click" Margin="0,0,10,0"/>
+            <Button Name="SaveTmaButton" Content="Save TMA" Width="100" Click="SaveTmaButton_Click"/>
+        </StackPanel>
+
+        <!-- File Loaded Label -->
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+            <TextBlock Text="File Loaded: " FontWeight="Bold" VerticalAlignment="Center"/>
+            <Label Name="FilePathLabel" Content="style.tma (Default)" VerticalAlignment="Center" Margin="5,0,0,0"/>
+        </StackPanel>
+
+        <!-- Rendering Flags Section -->
+        <GroupBox Header="Rendering Flags" Margin="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- First Row -->
+                <CheckBox x:Name="GouraudCheckBox" Content="Gouraud" Grid.Row="0" Grid.Column="0" Margin="5"/>
+                <CheckBox x:Name="TexturedCheckBox" Content="Textured" Grid.Row="0" Grid.Column="1" Margin="5"/>
+                <CheckBox x:Name="MaskedCheckBox" Content="Masked" Grid.Row="0" Grid.Column="2" Margin="5"/>
+                <CheckBox x:Name="TransparentCheckBox" Content="Transparent" Grid.Row="0" Grid.Column="3" Margin="5"/>
+
+                <!-- Second Row -->
+                <CheckBox x:Name="AlphaCheckBox" Content="Alpha" Grid.Row="1" Grid.Column="0" Margin="5"/>
+                <CheckBox x:Name="TiledCheckBox" Content="Tiled" Grid.Row="1" Grid.Column="1" Margin="5"/>
+                <CheckBox x:Name="TwoSidedCheckBox" Content="2-Sided" Grid.Row="1" Grid.Column="2" Margin="5"/>
+                <CheckBox x:Name="FlippedCheckBox" Content="Flipped" Grid.Row="1" Grid.Column="3" Margin="5"/>
+            </Grid>
+        </GroupBox>
+
+
+        <!-- Styles Section -->
+        <TextBlock Text="Styles" FontWeight="Bold" Margin="0,0,0,5"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Height="400">
+            <StackPanel x:Name="StylesStackPanel" Margin="0,0,0,10">
+                <!-- Dynamic styles will be added here -->
+            </StackPanel>
+        </ScrollViewer>
+    </StackPanel>
+</Window>

@@ -32,28 +32,29 @@ namespace UC_MapPainter
             if (File.Exists(texturePath))
             {
                 bitmapImage = new BitmapImage(new Uri(texturePath));
-            }
-            else
-            {
-                // Load the resource image
-                Uri resourceUri = new Uri("pack://application:,,,/Images/noTile.bmp", UriKind.Absolute);
-                bitmapImage = new BitmapImage(resourceUri);
-            }
 
-            var rotateTransform = new RotateTransform(rotation, 32, 32);
+                var rotateTransform = new RotateTransform(rotation, 32, 32);
 
-            cell.Background = new VisualBrush
-            {
-                Visual = new Image
+                cell.Background = new VisualBrush
                 {
-                    Source = bitmapImage,
-                    RenderTransform = rotateTransform,
-                    RenderTransformOrigin = new Point(0.5, 0.5),
-                    Stretch = Stretch.Fill,
-                    Width = 64,
-                    Height = 64
-                }
-            };
+                    Visual = new Image
+                    {
+                        Source = bitmapImage,
+                        RenderTransform = rotateTransform,
+                        RenderTransformOrigin = new Point(0.5, 0.5),
+                        Stretch = Stretch.Fill,
+                        Width = 64,
+                        Height = 64
+                    }
+                };
+            }
+            else 
+            {
+                // Set the background color to white using SolidColorBrush
+                cell.Background = new SolidColorBrush(Colors.White);
+            }
+
+
         }
 
         public async Task DrawCells(byte[] fileBytes, int selectedWorldNumber)
@@ -195,7 +196,7 @@ namespace UC_MapPainter
 
         public bool IsValidWorld(int worldNumber)
         {
-            var validWorlds = new HashSet<int> { 1, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 20 };
+            var validWorlds = new HashSet<int> { 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 20 };
             return validWorlds.Contains(worldNumber);
         }
 

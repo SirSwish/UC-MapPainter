@@ -1,0 +1,197 @@
+﻿<Window x:Class="UC_MapPainter.LightSelectionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Light Selection" Height="1000" Width="450"
+        WindowStyle="ToolWindow">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="10">
+            <!-- Load and Save Lighting File Buttons -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <Button Name="LoadLightingFileButton" Content="Load Lighting File" Click="LoadLightingFileButton_Click" Margin="0,0,5,0"/>
+                <Button Name="SaveLightingFileButton" Content="Save Lighting File" Click="SaveLightingFileButton_Click"/>
+            </StackPanel>
+
+            <GroupBox Header="Light Properties" Margin="0,0,0,10">
+                <StackPanel Margin="10">
+                    <!-- Range Slider -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                        <Slider Name="RangeSlider" Minimum="0" Maximum="255" TickFrequency="1" TickPlacement="BottomRight" IsSnapToTickEnabled="True" Width="300"/>
+                        <TextBlock Name="RangeValueLabel" Text="0" Width="30" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Text="Range" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+
+                    <!-- RGB Sliders on a single line -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                        <Slider Name="RedSlider" Minimum="-127" Maximum="127" TickFrequency="1" TickPlacement="BottomRight" IsSnapToTickEnabled="True" Width="90"/>
+                        <TextBlock Name="RedValueLabel" Text="0" Width="30" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                        <Slider Name="GreenSlider" Minimum="-127" Maximum="127" TickFrequency="1" TickPlacement="BottomRight" IsSnapToTickEnabled="True" Width="90"/>
+                        <TextBlock Name="GreenValueLabel" Text="0" Width="30" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                        <Slider Name="BlueSlider" Minimum="-127" Maximum="127" TickFrequency="1" TickPlacement="BottomRight" IsSnapToTickEnabled="True" Width="90"/>
+                        <TextBlock Name="BlueValueLabel" Text="0" Width="30" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,5,0,0">
+                        <TextBlock Text="Red" Width="90" TextAlignment="Center"/>
+                        <TextBlock Text="Green" Width="90" TextAlignment="Center"/>
+                        <TextBlock Text="Blue" Width="90" TextAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Thinner Color Preview Strip -->
+                    <Rectangle Name="LightColorPreview" Height="5" Stroke="Black" Fill="Black" Margin="0,5,0,0"/>
+
+                    <!-- Y (in storeys) Slider -->
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,5">
+                        <Slider Name="YStoreysSlider" Minimum="-128" Maximum="128" TickFrequency="1" TickPlacement="BottomRight" IsSnapToTickEnabled="True" Width="300"/>
+                        <TextBlock Name="YStoreysValueLabel" Text="0" Width="30" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Text="Y (in storeys)" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Light Entries Group -->
+            <GroupBox Header="Light Entries" Margin="0,0,0,10">
+                <StackPanel Margin="10">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Height="75">
+                        <UniformGrid Name="LightEntriesGrid" Columns="1" Margin="0,0,0,10">
+                            <!-- Light Entries will be dynamically added here -->
+                        </UniformGrid>
+                    </ScrollViewer>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Night Flags Section -->
+            <GroupBox Header="Night Flags" Margin="0,0,0,10">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="10">
+                    <CheckBox Name="LampostsLightCheckbox" Content="Lamps On" Margin="5,0"/>
+                    <CheckBox Name="DarkenBuildingPointsCheckbox" Content="Darken Walls" Margin="5,0"/>
+                    <CheckBox Name="DaytimeCheckbox" Content="Day" Margin="5,0"/>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- D3D and Specular Color with Alpha -->
+            <GroupBox Header="D3D and Specular Color" Margin="0,0,0,10">
+                <StackPanel Margin="10">
+                    <!-- Alpha Sliders -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                        <StackPanel Width="150" Margin="0,0,5,0">
+                            <TextBlock Text="D3D Alpha" HorizontalAlignment="Center"/>
+                            <Slider Name="D3DAlphaSlider" Minimum="0" Maximum="255" TickFrequency="1" IsSnapToTickEnabled="True" Width="140"/>
+                            <TextBlock Name="D3DAlphaValueLabel" Text="255" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Width="150">
+                            <TextBlock Text="Specular Alpha" HorizontalAlignment="Center"/>
+                            <Slider Name="SpecularAlphaSlider" Minimum="0" Maximum="255" TickFrequency="1" IsSnapToTickEnabled="True" Width="140"/>
+                            <TextBlock Name="SpecularAlphaValueLabel" Text="255" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- RGB Sliders for D3D and Specular on a single line each -->
+                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                        <TextBlock Text="D3D:" Width="40" VerticalAlignment="Center"/>
+                        <Slider Name="D3DRedSlider" Minimum="0" Maximum="255" Width="55"/>
+                        <TextBlock Name="D3DRedValueLabel" Text="0" Width="30" HorizontalAlignment="Center"/>
+                        <Slider Name="D3DGreenSlider" Minimum="0" Maximum="255" Width="55"/>
+                        <TextBlock Name="D3DGreenValueLabel" Text="0" Width="30" HorizontalAlignment="Center"/>
+                        <Slider Name="D3DBlueSlider" Minimum="0" Maximum="255" Width="55"/>
+                        <TextBlock Name="D3DBlueValueLabel" Text="0" Width="30" HorizontalAlignment="Center"/>
+                        <Rectangle Name="D3DColorPreview" Height="5" Stroke="Black" Fill="Black" Width="25" Margin="5,0,0,0"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                        <TextBlock Text="S:" Width="40" VerticalAlignment="Center"/>
+                        <Slider Name="SpecularRedSlider" Minimum="0" Maximum="255" Width="55"/>
+                        <TextBlock Name="SpecularRedValueLabel" Text="0" Width="30" HorizontalAlignment="Center"/>
+                        <Slider Name="SpecularGreenSlider" Minimum="0" Maximum="255" Width="55"/>
+                        <TextBlock Name="SpecularGreenValueLabel" Text="0" Width="30" HorizontalAlignment="Center"/>
+                        <Slider Name="SpecularBlueSlider" Minimum="0" Maximum="255" Width="55"/>
+                        <TextBlock Name="SpecularBlueValueLabel" Text="0" Width="30" HorizontalAlignment="Center"/>
+                        <Rectangle Name="SpecularColorPreview" Height="5" Stroke="Black" Fill="Black" Width="25" Margin="5,0,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Night Ambient RGB Section -->
+            <GroupBox Header="Night Ambient (RGB)" Margin="0,0,0,10">
+                <StackPanel Margin="10">
+                    <StackPanel Orientation="Horizontal">
+                        <Slider Name="AmbientRedSlider" Minimum="-127" Maximum="127" Width="90"/>
+                        <TextBlock Name="AmbientRedValueLabel" Text="0" Width="30"/>
+
+                        <Slider Name="AmbientGreenSlider" Minimum="-127" Maximum="127" Width="90"/>
+                        <TextBlock Name="AmbientGreenValueLabel" Text="0" Width="30"/>
+
+                        <Slider Name="AmbientBlueSlider" Minimum="-127" Maximum="127" Width="90"/>
+                        <TextBlock Name="AmbientBlueValueLabel" Text="0" Width="30"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,5,0,0">
+                        <TextBlock Text="Red" Width="90" TextAlignment="Center"/>
+                        <TextBlock Text="Green" Width="90" TextAlignment="Center"/>
+                        <TextBlock Text="Blue" Width="90" TextAlignment="Center"/>
+                    </StackPanel>
+
+                    <Rectangle Name="AmbientColorPreview" Height="5" Stroke="Black" Fill="Black" Margin="0,5,0,0"/>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Light Emitting Prim Color Section -->
+            <GroupBox Header="Light Emitting Prim Color" Margin="0,0,0,10">
+                <StackPanel Margin="10">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                        <Slider Name="LampostRedSlider" Minimum="-127" Maximum="127" Width="90"/>
+                        <TextBlock Name="LampostRedValueLabel" Text="0" Width="30"/>
+
+                        <Slider Name="LampostGreenSlider" Minimum="-127" Maximum="127" Width="90"/>
+                        <TextBlock Name="LampostGreenValueLabel" Text="0" Width="30"/>
+
+                        <Slider Name="LampostBlueSlider" Minimum="-127" Maximum="127" Width="90"/>
+                        <TextBlock Name="LampostBlueValueLabel" Text="0" Width="30"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,5,0,0">
+                        <TextBlock Text="Red" Width="90" TextAlignment="Center"/>
+                        <TextBlock Text="Green" Width="90" TextAlignment="Center"/>
+                        <TextBlock Text="Blue" Width="90" TextAlignment="Center"/>
+                    </StackPanel>
+
+                    <Rectangle Name="LampostColorPreview" Height="5" Stroke="Black" Fill="Black" Margin="0,5,0,0"/>
+
+                    <!-- Radius Slider -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                        <Slider Name="LampostRadiusSlider" Minimum="0" Maximum="255" TickFrequency="1" Width="300"/>
+                        <TextBlock Name="LampostRadiusValueLabel" Text="0" Width="30"/>
+                    </StackPanel>
+                    <TextBlock Text="Radius" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Night Colour Section -->
+            <GroupBox Header="Night Sky Colour" Margin="0,0,0,10">
+                <StackPanel Margin="10">
+                    <StackPanel Orientation="Horizontal">
+                        <Slider Name="NightSkyRedSlider" Minimum="0" Maximum="255" Width="90"/>
+                        <TextBlock Name="NightSkyRedValueLabel" Text="0" Width="30" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                        <Slider Name="NightSkyGreenSlider" Minimum="0" Maximum="255" Width="90"/>
+                        <TextBlock Name="NightSkyGreenValueLabel" Text="0" Width="30" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                        <Slider Name="NightSkyBlueSlider" Minimum="0" Maximum="255" Width="90"/>
+                        <TextBlock Name="NightSkyBlueValueLabel" Text="0" Width="30" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,5,0,0">
+                        <TextBlock Text="Red" Width="90" TextAlignment="Center"/>
+                        <TextBlock Text="Green" Width="90" TextAlignment="Center"/>
+                        <TextBlock Text="Blue" Width="90" TextAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Thin Color Preview Strip -->
+                    <Rectangle Name="NightSkyColorPreview" Height="5" Stroke="Black" Fill="Black" Margin="0,5,0,0"/>
+                </StackPanel>
+            </GroupBox>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

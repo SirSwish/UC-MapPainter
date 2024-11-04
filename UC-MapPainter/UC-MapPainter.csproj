@@ -12,6 +12,7 @@
     <None Remove="Images\default.bmp" />
     <None Remove="Images\icon.ico" />
     <None Remove="Images\noTile.bmp" />
+    <None Remove="Light\blank.lgt" />
     <None Remove="Map\default.iam" />
   </ItemGroup>
 
@@ -19,11 +20,66 @@
     <Resource Include="Images\default.bmp" />
     <Resource Include="Images\icon.ico" />
     <Resource Include="Images\noTile.bmp" />
+    <EmbeddedResource Include="Light\blank.lgt" />
     <EmbeddedResource Include="Map\default.iam" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Textures\world2\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Textures\world10\style.tma">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Textures\world11\style.tma">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Textures\world12\style.tma">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Textures\world13\style.tma">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Textures\world15\style.tma">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Textures\world16\style.tma">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Textures\world17\style.tma">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Textures\world18\style.tma">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Textures\world1\style.tma">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Textures\world20\style.tma">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Textures\world2\style.tma">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Textures\world3\style.tma">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Textures\world4\style.tma">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Textures\world5\style.tma">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Textures\world7\style.tma">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Textures\world8\style.tma">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Textures\world9\style.tma">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

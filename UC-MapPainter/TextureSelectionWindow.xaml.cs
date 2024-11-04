@@ -217,6 +217,18 @@ namespace UC_MapPainter
                 }
             }
         }
+
+        // Stub function for the "View / Edit Wall Styles" button
+        // Event handler for View / Edit Wall Styles button click
+        private void ViewEditWallStylesButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Get the selected world number
+            int selectedWorld = GetSelectedWorld();
+
+            WallStylesSelectionWindow wallStylesWindow = new WallStylesSelectionWindow(selectedWorld);
+            wallStylesWindow.Owner = this;
+            wallStylesWindow.ShowDialog();
+        }
     }
 
     public class TextureInfo

@@ -16,6 +16,7 @@
             <MenuItem Header="Window">
                 <MenuItem Header="Texture Selection" Click="TextureSelection_Click" x:Name="TextureSelectionMenuItem"/>
                 <MenuItem x:Name="PrimSelectionMenuItem" Header="Prim Selection" Click="PrimSelection_Click"/>
+                <MenuItem x:Name="LightSelectionMenuItem" Header="Light Selection" Click="LightSelection_Click"/>
             </MenuItem>
             <MenuItem Header="Prims">
                 <MenuItem Header="Graphics Enabled">
@@ -27,6 +28,17 @@
                 <MenuItem Header="Show MapWho Info" Click="ShowMapWhoInfo_Click"/>
                 <MenuItem Header="Draw MapWho Grid" Click="ToggleMapWhoGridMenuItem_Click" x:Name="ToggleMapWhoGridMenuItem"/>
             </MenuItem>
+            <!-- New Building Menu -->
+            <MenuItem Header="Building">
+                <MenuItem Header="View">
+                    <MenuItem Header="Building Header" Click="ViewBuildingHeader_Click" />
+                    <MenuItem Header="Buildings" Click="ViewBuildings_Click" />
+                    <MenuItem Header="Walls" Click="ViewWalls_Click" />
+                    <MenuItem Header="Raw Building Data" Click="ViewRawBuildingData_Click" />
+                </MenuItem>
+                <MenuItem Header="Dump Building Data" Click="DumpBuildingData_Click" />
+            </MenuItem>
+            
         </Menu>
         <Grid DockPanel.Dock="Top" Height="100" Background="LightGray">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0">
@@ -42,6 +54,7 @@
                     <Button Content="Height" Click="EditHeightButton_Click" x:Name="EditHeightButton" Width="75" Height="30" Margin="5,0" IsEnabled="False"/>
                     <Button Content="Buildings" Click="EditBuildingsButton_Click" x:Name="EditBuildingsButton" Width="75" Height="30" Margin="5,0" IsEnabled="False"/>
                     <Button Content="Prims" Click="EditPrimsButton_Click" x:Name="EditPrimsButton" Width="75" Height="30" Margin="5,0" IsEnabled="False"/>
+                    <Button Content="Lights" Click="EditLightsButton_Click" x:Name="EditLightsButton" Width="75" Height="30" Margin="5,0" IsEnabled="False"/>
                 </StackPanel>
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="10,0">
