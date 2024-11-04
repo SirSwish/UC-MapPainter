@@ -1,4 +1,4 @@
-# UC-MapPainter
+![image](https://github.com/user-attachments/assets/70238a43-31d7-42eb-b537-5c9f165ed1b0)# UC-MapPainter
 Urban Chaos Map Editor
 
 ## Overview
@@ -6,10 +6,13 @@ UC-MapPainter is an application used for creating, modifying, and exporting the 
 
 ## Features
 - **Create New Maps**: Generate new maps using a default world template.
-- **Load Maps**: Directly load .iam files with automatic texture,height and Prim recognition.
+- **Load Maps**: Directly load .iam files with automatic texture,height, Prims and Buildig recognition.
+- **Load Lighting**: Directly load .lgt files and edit Light way points and ambient lighting.
 - **Zoom and Coordinate Tracking**: Zoom in/out functionality and real-time cell coordinate tracking.
+- **Dump Building Data***: Dump raw building data to file for analysis
 - **Export Maps**: Export the maps to an 8192 x 8192 pixel image file.
-- **Save Maps**: Save maps back to .iam format for use in the Urban Chaos game.
+- **Save Maps**: Save maps back to .iam format for use in Urban Chaos.
+- **Save Lights**: Save light structures back to .lgt format for use in Urban Chaos.
 
 ## Getting Started
 To get started with UC-MapPainter, simply clone the repository and build the application. You will also need to download the Textures and Map folder and place them in the same directory as your EXE. These are located in the Release Zip file.
@@ -24,7 +27,7 @@ To get started with UC-MapPainter, simply clone the repository and build the app
 - **Load Map**: Use the "Load Map" option from the File menu to load an existing .iam file. The application will automatically detect the world (if available). If a world is not detected, you will be prompted to enter one.
 - **Select Textures**: Once the grid is loaded, select textures to paint with from the right-hand side. The selected texture box will update accordingly. Rotate the texture using the buttons underneath the selected texture.
 - **Zoom**: Use the Zoom In/Zoom Out buttons to view higher resolution maps (use sparingly to avoid performance issues).
-- **Save Map**: When satisfied with the paint job, save back to a .iam file using the "Save Map" option. You can also export the map file to an image.
+- **Save Map**: When satisfied with the edits, save back to a .iam file using the "Save Map" or "Save As" File option. You can also export the map file to an image.
 
 ## Instructions
 ### Starting a New Map
@@ -51,6 +54,14 @@ To paint a cell, click one of the textures from the 'Texture Selection' window. 
 When you are happy with the rotation, select a cell on the grid to place the texture. You can use the 'Mouse Position' in the top left to keep track of where in the Map you are.
 
 ![image](https://github.com/user-attachments/assets/0006f32c-c8c5-4ba4-8181-7d52fa8ae0eb)
+
+You are also able to view "Wall Styles". In Urban Chaos, walls are textured using 'styles' of textures which are a group of 5 textures which repeat in specific patterns accross walls. These are stored by world number in the 'style.tma' file. The 'style.tma' file for the selected world can be viewed by clicking the 'View / Edit Wall Styles' button in the Texture Selection Window.
+
+![image](https://github.com/user-attachments/assets/3122a2cf-3531-4500-97a0-40efaadd6dc4)
+
+This will bring up the Style viewer window. Currently, this is view-only but will show you all the styles in the .tma file. It also displays the rendering flags for each of the cells.
+
+![image](https://github.com/user-attachments/assets/b6255d47-709f-4c6c-a2bb-4599c382011b)
 
 Next, select 'Height'. This will bring forward the Height modification grid you can use to raise or lower the terrain. Clicking a cell will increase the height by 1 unit. Right clicking the cell will decrease the height by 1 unit. Additionally, you can hold 'Shift' key to increase/decrease by units of 10. The cell itself does not raise, but rather the bottom right vertex of the cell.
 
@@ -114,6 +125,74 @@ Texture Maps can also be exported to a 8192 x 8192 pixel Bitmap image by selecti
 ![image](https://github.com/user-attachments/assets/96852c54-89cc-4022-842d-29fc0dea462a)
 
 ![image](https://github.com/user-attachments/assets/0e14ae4c-334a-4ed8-b0cd-fc29b4622832)
+
+### Viewing Building Data
+When a file has been loaded via any of the above methods, Building data can be viewed by selecting the "Buildings" tab.
+![image](https://github.com/user-attachments/assets/13f7708b-f42e-45b9-8036-3c96b5edd045)
+This will generate the outlines of walls and will label each wall against each building on the Map. You will notice a label like B: x W : x which tells you which building and which wall the line being drawn belongs to. "Walls" in the game include normal building walls, fences, ladders, doors and cables. And these are color coded. Bright green are normal walls, orange are ladders, red are cables, yellow are fences, purple are doors. An example below is shown for the assault1.iam map.
+![image](https://github.com/user-attachments/assets/ed26a4a8-1d78-47a4-81de-3137b08f140e)
+
+Building data can be viewed via the 'Building' menu item. 
+
+The building header data can be viewed by selecting 'Building' → 'View' → 'Building Header' which displays the number of Buildings and walls in the Map
+
+![image](https://github.com/user-attachments/assets/9dba5f5f-d878-4494-9a01-36eb1da3cba4)
+
+The buildings data can be viewed by selecting 'Building' → 'View' → 'Buildings' which displays all Building data of the map
+![image](https://github.com/user-attachments/assets/916aa617-308c-4bd5-b53a-f127a7900412)
+
+The walls data can be viewed by selecting 'Building' → 'View' → 'Walls' which displays all Walls data of the map
+
+![image](https://github.com/user-attachments/assets/e665dcef-b72a-429f-9aec-385fc30efcac)
+
+Raw building data can be viewed by selecting 'Building' → 'View' → 'Walls'
+
+![image](https://github.com/user-attachments/assets/8ee18874-ff4c-4f22-a4ae-f6332dfeaf42)
+
+This data can also be dumped by selecting 'Building' → 'Dump Building Data' which will output the data to 'BuildingData.bin' in the working directory
+
+![image](https://github.com/user-attachments/assets/7a378ce7-dde4-4caa-a94f-fccc73d96546)
+
+### Editing Lights
+This application can also be used to edit Lighting (.lgt) files used in the game. As the name implies, these are used to light the maps and can be loaded alongside .iam files using the 'Ctrl+R' method. You can begin by loading a .iam file into the Map Editor as per the methods above. This will unlock the 'Lights' button. Select this to bring up the 'Light Selection Window'.
+
+![image](https://github.com/user-attachments/assets/a2cc5797-dcbf-46e9-8c30-71cb442040af)
+
+You initially start with a blank .lgt file that you can fill with new light entries. You can place a new light by first setting the 'Range', 'Red', 'Green' and 'Blue' values. The 'Range' value goes from 0-255 and determines the size of the light. The RGB values are signed and range from -127 to 127. There is a color preview bar available which shows the color the light will be when it is placed. As an example, a Green light is placed by increasing the 'Range' value to 255, and changesing the RGB combination to -127,127,-127. You can also modify the height of the light by adjusting the 'Y' slider. The Y Slider is set to increment in storeys. In this example, we simply place it at Storey 1 (which is common for most lights that appear on level ground).
+
+When the values are set, hover the mouse over the grid where you want to place the light and left click to place it. You will also see it added to the 'Light Entries' list box.
+
+![image](https://github.com/user-attachments/assets/ce7c1b18-6350-47f6-93a9-3fa013646ca2)
+
+Next, you can update the 'Night Flags' section. There are three properties: 'Lamps on', 'Darken Walls' and 'Day'. The 'Lamps On' checbox controls whether Street lights are turned on or off. 'Darken Walls' when enabled will darken building points. The final checbox is to control whether it is day or not. By default, light files are at night time. In this example, we will turn the street lights on and keep it at night (which will also generate rain automatically). The SPecular sliders are also RGBA coded and are used for highlighting and reflections. This value rarely changes in the observed .lgt files in the game from 0,0,0,255, so we will keep it at that.
+
+![image](https://github.com/user-attachments/assets/5b05f224-fd6b-4bdb-8780-218d3306cfb1)
+
+The D3D and Specular Color section controls the overall ambient lighting of the map and is an RGBA control set - think of it like a movie filter. We can make levels look like Mexico using the RGB color code for the Mexico movie filter (255,191,55). We will make it fully opaque by keeping the D3D Alpha at 255.
+
+![image](https://github.com/user-attachments/assets/255d0ec2-7930-422c-9fef-2947f8a2e40f)
+
+The 'Night Ambient' section is used to control Ambient Lighting when we are in Night mode, we are currently in Night mode, so we will set it to our Mexico Filter colors again though these values are signed so should reflect the following numbers (127,64,-72).
+
+![image](https://github.com/user-attachments/assets/243111b5-c0f1-4620-82aa-bf1c663a11af)
+
+You can control the colors of the Light emitting Prims (such as Lamp Posts, Billboards etc.) by modifying the RGB values in the 'Light Emitting Prim Color' section. The default values for these are (70,70,36). In this example, we will make them green by setting the values to (-127,127,-127). You can also change the Radius that the light of these Prims reaches by changing the 'Radius' slider. For this, we will keep it at 255.
+
+![image](https://github.com/user-attachments/assets/bcbac4bf-0d72-43aa-97e8-6f3c4c7774b2)
+
+Finally, you can set the Night Sky Colour. The default, sensible values for this is 210,200,240. Which is what we will keep for the example. When we are happy with the values, we can output the new .lgt file by selecting the 'Save Lighting File' button at the top of the Window which will prompt the user to save to a new file. 
+
+![image](https://github.com/user-attachments/assets/d9821111-ddf9-47e1-b7f1-133bf971239c)
+
+We can now load the lighting file using the 'Ctrl+R' method. 
+
+![image](https://github.com/user-attachments/assets/da8e1cb2-17f6-4810-91b7-93adc81b289f) ![image](https://github.com/user-attachments/assets/efa006a4-d922-4d32-b509-ce87aa8a07c4)
+
+We can also Load existing .lgt files for viewing by selecting 'Load Lighting File' button. This will overlay the lights onto the map and update the value sliders according to the file. In this example, we will use the lighting file actually intended for the 'assault.iam' file (assault1.lgt)
+
+![image](https://github.com/user-attachments/assets/f0203b4f-0c51-4716-90fc-a06143887470)
+![image](https://github.com/user-attachments/assets/61dfcb74-9e47-4a85-a57a-7c17572ee3b9)
+
 
 ## Acknowledgements
 - **Urban Chaos Discord**: [Urban Chaos Discord](https://discord.gg/EhFGnWWagx)
