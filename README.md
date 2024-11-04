@@ -1,4 +1,4 @@
-![image](https://github.com/user-attachments/assets/70238a43-31d7-42eb-b537-5c9f165ed1b0)# UC-MapPainter
+# UC-MapPainter
 Urban Chaos Map Editor
 
 ## Overview
