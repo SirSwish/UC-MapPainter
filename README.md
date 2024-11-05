@@ -198,6 +198,7 @@ We can also Load existing .lgt files for viewing by selecting 'Load Lighting Fil
 - **Urban Chaos Discord**: [Urban Chaos Discord](https://discord.gg/EhFGnWWagx)
 - **Pieroz**: Special thanks to [Pieroz](https://github.com/PieroZ) for breathing life into Urban Chaos modding.
 - **Inco1**: [Inco1](https://github.com/inco1/) - The PHP tools he created served as the basis for understanding .iam files.
+- **bartlomiejduda**:[bartlomiejduda](https://github.com/bartlomiejduda/) - had documented the .LGT and .TMA file formats which I used for Lighting and viewing of Style.tma files
 - **ChatGPT**: This tool was created in its entirety with the assitance of ChatGPT4-Omni
 
 ## Contributing
