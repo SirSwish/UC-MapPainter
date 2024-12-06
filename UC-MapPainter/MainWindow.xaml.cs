@@ -94,15 +94,6 @@ namespace UC_MapPainter
         private List<DBuilding> buildings = new(); // List of all buildings created
         private List<DStorey> storeys = new(); // List of all buildings created
         private int currentFacetIndex = 1; // Index of the next facet to be created
-
-        private int next_dbuilding = 1;
-        private int next_facet = 1;
-        private int next_dstyle = 1;
-        private int next_dstorey = 1;
-        private int next_paint_mem = 1;
-
-
-
         private Line previewLine = null;
 
         //private List<Point> mWallPoints = new List<Point>();
