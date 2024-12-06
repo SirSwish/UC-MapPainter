@@ -12,6 +12,7 @@ using Microsoft.Win32;
 using System.Collections.Generic;
 using Path = System.IO.Path;
 using System.Windows.Data;
+using System.Windows.Shapes;
 
 namespace UC_MapPainter
 {
@@ -30,7 +31,8 @@ namespace UC_MapPainter
             Buildings = 1 << 2,
             Prims = 1 << 3,
             Lights = 1 << 4,
-            All = Textures | Height | Buildings | Prims | Lights
+            Walls = 1 << 5,
+            All = Textures | Height | Buildings | Prims | Lights | Walls
         }
 
         //Map
@@ -81,6 +83,20 @@ namespace UC_MapPainter
 
         //Buildings
         private BuildingFunctions buildingFunctions;
+
+        // FIXME:
+
+        private Point? currentStartPoint = null;
+        private List<Point> currentBuildingPoints = new List<Point>();
+        //private List<List<Point>> buildings = new List<List<Point>>(); // Stores completed buildings
+
+        private List<DFacet> facets = new(); // List of all facets created
+        private List<DBuilding> buildings = new(); // List of all buildings created
+        private List<DStorey> storeys = new(); // List of all buildings created
+        private int currentFacetIndex = 1; // Index of the next facet to be created
+        private Line previewLine = null;
+
+        //private List<Point> mWallPoints = new List<Point>();
 
         //Lights
         internal LightSelectionWindow lightSelectionWindow;
@@ -409,6 +425,11 @@ namespace UC_MapPainter
             }
         }
 
+        private void EditWallsButton_Click(object sender, RoutedEventArgs e)
+        {
+            //MessageBox.Show("Hura.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+
 
         private void ToggleMapWhoGridMenuItem_Click(object sender, RoutedEventArgs e)
         {
@@ -576,6 +597,34 @@ namespace UC_MapPainter
             }
         }
 
+        private void SaveBuildingData_Click(object sender, RoutedEventArgs e)
+        {
+            //int iamBuildingsOffset = 98314;
+            //Map.WriteBuildingsMock(modifiedFileBytes, iamBuildingsOffset);
+            List<byte> buildingsData = Map.PrepareBuildingsMock(buildings, facets, storeys);
+            int startEmptyIamBuildingsOffset = 98314;
+            // next_dbuilding+next_dfacet+next_dstyle+next_paint_mem+next_dstorey+sizeof(struct DBuilding)+ sizeof(struct DFacet) + sizeof(UWORD) + sizeof(UBYTE) + sizeof(next_dstorey)
+            //int next_dfacet_offset = 2;
+            int endEmptyIamBuildingsOffset = startEmptyIamBuildingsOffset + 2+2+2+2+2+ 24+26+2+1+6;
+
+            // Create a dynamic list for the new byte array
+            List<byte> resultBytes = new List<byte>();
+
+            // Step 1: Grab the first 98314 bytes
+            resultBytes.AddRange(modifiedFileBytes.Take(98314));
+
+            // Step 2: Insert the buildings bytes
+            resultBytes.AddRange(buildingsData);
+
+            // Step 3: Append the bytes from modifiedFileBytes starting at endEmptyIamBuildingsOffset
+            resultBytes.AddRange(modifiedFileBytes.Skip(endEmptyIamBuildingsOffset));
+
+            modifiedFileBytes = resultBytes.ToArray();
+            //modifiedFileBytes = ModifyFileBytes(modifiedFileBytes, startEmptyIamBuildingsOffset, buildingsBytes);
+
+
+        }
+
         private void DumpBuildingData_Click(object sender, RoutedEventArgs e)
         {
            
@@ -666,6 +715,17 @@ namespace UC_MapPainter
         //////////////////
         /// Miscellaneous
         /////////////////
+
+
+        private Point GetNearestCorner(double x, double y)
+        {
+            // Assuming a grid cell size of 64x64
+            int gridSize = 64;
+            double nearestX = Math.Round(x / gridSize) * gridSize;
+            double nearestY = Math.Round(y / gridSize) * gridSize;
+            return new Point(nearestX, nearestY);
+        }
+
 
         // Helper function to create a DataGrid for displaying buildings
         private DataGrid CreateWallsDataGrid(List<Wall> walls)
@@ -792,7 +852,7 @@ namespace UC_MapPainter
             if (isNewFile)
             {
                 // Load the default.iam file from embedded resources
-                var assembly = Assembly.GetExecutingAssembly();
+                 var assembly = Assembly.GetExecutingAssembly();
                 var resourceName = "UC_MapPainter.Map.default.iam"; // Adjust the namespace if necessary
 
                 using (Stream stream = assembly.GetManifestResourceStream(resourceName))
@@ -817,6 +877,7 @@ namespace UC_MapPainter
                 TaskDescription = "Loading Map"
             };
             loadingWindow.Owner = this;
+
             loadingWindow.Show();
 
             // Determine the world number
@@ -841,7 +902,9 @@ namespace UC_MapPainter
 
             loadingWindow.Close();
 
-            MessageBox.Show("File loaded successfully. You can now edit textures, heights, or prims.", "Load Successful", MessageBoxButton.OK, MessageBoxImage.Information);
+            //selectedWorldNumber = 1;
+
+            //MessageBox.Show("File loaded successfully. You can now edit textures, heights, or prims.", "Load Successful", MessageBoxButton.OK, MessageBoxImage.Information);
 
             SaveMenuItem.IsEnabled = true;
             SaveAsMenuItem.IsEnabled = true;
@@ -934,7 +997,82 @@ namespace UC_MapPainter
 
                 else if (currentEditMode == "Buildings")
                 {
-                    //do something
+
+                    // Get the row and column
+                    int row = 127 - Grid.GetRow(cell);
+                    int col = 127 - Grid.GetColumn(cell);
+
+                    // Calculate the nearest corner
+                    Point clickedCorner = GetNearestCorner((128 - col) * 64, (128 - row) * 64);
+
+                    if (currentStartPoint == null)
+                    {
+                        // Start a new wall
+                        currentStartPoint = clickedCorner;
+                        //currentBuildingPoints.Add(clickedCorner);
+                    }
+                    else
+                    {
+                        // Draw the wall and update the state
+                        DrawWallLine(currentStartPoint.Value, clickedCorner);
+                        currentStartPoint = clickedCorner;
+                        //currentBuildingPoints.Add(clickedCorner);
+                    }
+
+                    // Remove the preview line after confirming the wall
+                    if (previewLine != null)
+                    {
+                        OverlayGrid.Children.Remove(previewLine);
+                        previewLine = null;
+                    }
+
+                    //// Get the clicked cell's grid coordinates
+                    //int row = 127 - Grid.GetRow(cell);
+                    //int col = 127 - Grid.GetColumn(cell);
+
+
+
+                    //// Snap to the nearest corner (grid size assumed to be 64x64)
+                    //int snappedX = col * 64;
+                    //int snappedZ = row * 64;
+
+                    // Add the point to the current building's points
+                    //currentBuildingPoints.Add(new Point(snappedX, snappedZ));
+                    currentBuildingPoints.Add(clickedCorner);
+
+                    // If there's at least one previous point, create a line and a facet
+                    if (currentBuildingPoints.Count > 1)
+                    {
+                        var startPoint = currentBuildingPoints[^2]; // Second-to-last point
+                        var endPoint = currentBuildingPoints[^1];   // Last point
+
+                        // Create a new facet
+                        var newFacet = new DFacet
+                        {
+                            X = new byte[] { (byte)(startPoint.X / 64), (byte)(endPoint.X / 64) },
+                            Z = new byte[] { (byte)(startPoint.Y / 64), (byte)(endPoint.Y / 64) }
+                        };
+
+                        facets.Add(newFacet);
+
+                        // Render the wall line
+                        Line wallLine = new Line
+                        {
+                            Stroke = Brushes.Magenta,
+                            StrokeThickness = 12,
+                            X1 = startPoint.X,
+                            Y1 = startPoint.Y,
+                            X2 = endPoint.X,
+                            Y2 = endPoint.Y
+                        };
+
+                        // Add the wall line to the grid overlay
+                        OverlayGrid.Children.Add(wallLine);
+
+                        currentFacetIndex++;
+                    }
+
+
                 }
 
                 else if (currentEditMode == "Prims" && selectedPrimNumber != -1)
@@ -1110,6 +1248,35 @@ namespace UC_MapPainter
             }
         }
 
+
+        public void Cell_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (sender is Border cell && currentStartPoint != null && currentEditMode == "Buildings")
+            {
+                // Get the mouse position and calculate the nearest corner
+                int row = 127 - Grid.GetRow(cell);
+                int col = 127 - Grid.GetColumn(cell);
+
+                Point nearestCorner = GetNearestCorner((128 - col) * 64, (128 - row) * 64);
+
+                // Update or create the preview line
+                if (previewLine == null)
+                {
+                    previewLine = new Line
+                    {
+                        Stroke = new SolidColorBrush(Color.FromArgb(128, 255, 0, 255)), // Semi-transparent pink
+                        StrokeThickness = 12
+                    };
+                    OverlayGrid.Children.Add(previewLine);
+                }
+
+                previewLine.X1 = currentStartPoint.Value.X;
+                previewLine.Y1 = currentStartPoint.Value.Y;
+                previewLine.X2 = nearestCorner.X;
+                previewLine.Y2 = nearestCorner.Y;
+            }
+        }
+
         public void Cell_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.RightButton == MouseButtonState.Pressed && sender is Border cell)
@@ -1150,7 +1317,26 @@ namespace UC_MapPainter
                 }
                 else if (currentEditMode == "Buildings")
                 {
-                    //Do something
+                    if (currentBuildingPoints.Count < 2)
+                    {
+                        MessageBox.Show("A building requires at least 2 points!", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
+                    // Create a new building
+                    var newBuilding = new DBuilding
+                    {
+                        StartFacet = (ushort)(currentFacetIndex - currentBuildingPoints.Count + 1),
+                        EndFacet = (ushort)currentFacetIndex,
+                        Walkable = 1
+                    };
+
+                    buildings.Add(newBuilding);
+
+                    // Reset the current building points for the next building
+                    currentBuildingPoints.Clear();
+
+                    MessageBox.Show($"Building created with facets {newBuilding.StartFacet} to {newBuilding.EndFacet}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else if (currentEditMode == "Prims")
                 {
@@ -1196,6 +1382,7 @@ namespace UC_MapPainter
             EditBuildingsButton.IsEnabled = (flags & ButtonFlags.Buildings) != 0;
             EditPrimsButton.IsEnabled = (flags & ButtonFlags.Prims) != 0;
             EditLightsButton.IsEnabled = (flags & ButtonFlags.Lights) != 0;
+            EditWallsButton.IsEnabled = (flags & ButtonFlags.Lights) != 0;
         }
         private void ExportMapToBmp(string filePath)
         {
@@ -1351,6 +1538,22 @@ namespace UC_MapPainter
                     ModifyButtonStatus(ButtonFlags.All); // Enable all buttons by default
                     break;
             }
+        }
+
+        private void DrawWallLine(Point start, Point end)
+        {
+            Brush pink = new SolidColorBrush(Color.FromRgb(255, 0, 255));
+            Line wallLine = new Line
+            {
+                Stroke = pink,
+                StrokeThickness = 12,
+                X1 = start.X,
+                Y1 = start.Y,
+                X2 = end.X,
+                Y2 = end.Y
+            };
+
+            OverlayGrid.Children.Add(wallLine);
         }
 
         private void DrawMapWhoGrid()

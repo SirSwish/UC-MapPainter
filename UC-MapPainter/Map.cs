@@ -1,6 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Reflection;
+using System.Reflection.Metadata;
+using System.Runtime.CompilerServices;
+using System.Windows.Input;
 
 namespace UC_MapPainter
 {
@@ -205,7 +210,7 @@ namespace UC_MapPainter
         //Write new Prim objects to buffer
         public static void WritePrims(byte[] newFileBytes, List<Prim> newPrimArray, int newObjectOffset)
         {
-            int numObjects = newPrimArray.Count +1;
+            int numObjects = newPrimArray.Count + 1;
             BitConverter.GetBytes(numObjects).CopyTo(newFileBytes, newObjectOffset);
 
             // Write an initial 8 bytes of 0's before writing the prims
@@ -247,5 +252,191 @@ namespace UC_MapPainter
         {
             Array.Copy(newPSXTextureData, 0, newFileBytes, newFileBytes.Length - 2000, 2000);
         }
+
+        public static List<byte> PrepareBuildingsMock(List<DBuilding> buildings, List<DFacet> facets, List<DStorey> storeys)
+        {
+            // Initialize a dynamic buffer
+            List<byte> byteBuffer = new List<byte>();
+
+            // Write building metadata
+            ushort next_dbuilding = (ushort)(buildings.Count + 1);
+            byteBuffer.AddRange(BitConverter.GetBytes(next_dbuilding));
+
+            ushort next_dfacet = (ushort)(facets.Count + 1);
+            byteBuffer.AddRange(BitConverter.GetBytes(next_dfacet));
+
+            ushort next_dstyle = (ushort)(facets.Count + 1); // Assuming facets.Count represents styles for now
+            byteBuffer.AddRange(BitConverter.GetBytes(next_dstyle));
+
+            ushort next_paint_mem = 1;
+            byteBuffer.AddRange(BitConverter.GetBytes(next_paint_mem));
+
+            ushort next_dstorey = 1;
+            byteBuffer.AddRange(BitConverter.GetBytes(next_dstorey));
+
+            // Write a new default building
+            DBuilding defaultBuilding = new DBuilding();
+            byteBuffer.AddRange(WriteSingleBuildingToBytes(defaultBuilding));
+
+            // Write existing buildings
+            foreach (var b in buildings)
+            {
+                byteBuffer.AddRange(WriteSingleBuildingToBytes(b));
+            }
+
+            // Write a new default facet
+            DFacet defaultFacet = new DFacet(true);
+            byteBuffer.AddRange(WriteSingleFacetToBytes(defaultFacet));
+
+            // Write existing facets
+            foreach (var f in facets)
+            {
+                byteBuffer.AddRange(WriteSingleFacetToBytes(f));
+            }
+
+            // Example for styles (assumed 1 byte per style)
+            byteBuffer.Add(0); // Start of styles
+            for (int i = 0; i < facets.Count; i++)
+            {
+                byteBuffer.Add(3); // Example value for style
+            }
+
+            // Example for paint memory
+            List<byte> paintMem = new List<byte> { 0 };
+            byteBuffer.AddRange(paintMem);
+
+            // Write a new default storey
+            DStorey defaultStorey = new DStorey();
+            byteBuffer.AddRange(WriteSingleStoreyToBytes(defaultStorey));
+
+
+            // UNCHANGED FOR NOW
+            //ushort next_inside_storey = 1;
+            //byteBuffer.AddRange(BitConverter.GetBytes(next_inside_storey));
+
+            //ushort next_inside_stair = 1;
+            //byteBuffer.AddRange(BitConverter.GetBytes(next_inside_stair));
+
+            //ushort next_block = 1;
+            //byteBuffer.AddRange(BitConverter.GetBytes(next_block));
+
+            ////FileWrite(handle, &inside_storeys[0], sizeof(struct InsideStorey)*next_inside_storey);
+            ////FileWrite(handle,&inside_stairs[0],sizeof(struct Staircase)*next_inside_stair);
+            ////FileWrite(handle,&inside_block[0],sizeof(UBYTE)* next_inside_block);
+
+            //// sizeof(struct InsideStorey) - 22  bytes
+            //// sizeof(struct Staircase) - 10 bytes
+
+            //for (int i = 0; i < 33; i++)
+            //{
+            //    byteBuffer.Add(0); // Ignore InsideStorey Staircase data for now
+            //}
+
+            // sizeof(struct DWalkable) - 22 bytes
+            // sizeof(struct RoofFace4) - 10 bytes
+
+            return byteBuffer; // Return the prepared byte list
+        }
+
+        // Helper method for building serialization
+        private static byte[] WriteSingleBuildingToBytes(DBuilding building)
+        {
+            byte[] bytes = new byte[24];
+            int offset = 0;
+
+            BitConverter.GetBytes(building.X).CopyTo(bytes, offset);
+            offset += 4;
+
+            BitConverter.GetBytes(building.Y).CopyTo(bytes, offset);
+            offset += 4;
+
+            BitConverter.GetBytes(building.Z).CopyTo(bytes, offset);
+            offset += 4;
+
+            BitConverter.GetBytes(building.StartFacet).CopyTo(bytes, offset);
+            offset += 2;
+
+            BitConverter.GetBytes(building.EndFacet).CopyTo(bytes, offset);
+            offset += 2;
+
+            BitConverter.GetBytes(building.Walkable).CopyTo(bytes, offset);
+            offset += 2;
+
+            building.Counter.CopyTo(bytes, offset);
+            offset += 2;
+
+            BitConverter.GetBytes(building.Padding).CopyTo(bytes, offset);
+            offset += 2;
+
+            bytes[offset++] = building.Ware;
+            bytes[offset++] = building.Type;
+
+            return bytes;
+        }
+
+        // Helper method for facet serialization
+        private static byte[] WriteSingleFacetToBytes(DFacet facet)
+        {
+            byte[] bytes = new byte[26];
+            int offset = 0;
+
+            bytes[offset++] = facet.FacetType;
+            bytes[offset++] = facet.Height;
+
+            facet.X.CopyTo(bytes, offset);
+            offset += 2;
+
+            foreach (var y in facet.Y)
+            {
+                BitConverter.GetBytes(y).CopyTo(bytes, offset);
+                offset += 2;
+            }
+
+            facet.Z.CopyTo(bytes, offset);
+            offset += 2;
+
+            BitConverter.GetBytes(facet.FacetFlags).CopyTo(bytes, offset);
+            offset += 2;
+
+            BitConverter.GetBytes(facet.StyleIndex).CopyTo(bytes, offset);
+            offset += 2;
+
+            BitConverter.GetBytes(facet.Building).CopyTo(bytes, offset);
+            offset += 2;
+
+            BitConverter.GetBytes(facet.DStorey).CopyTo(bytes, offset);
+            offset += 2;
+
+            bytes[offset++] = facet.FHeight;
+            bytes[offset++] = facet.BlockHeight;
+            bytes[offset++] = facet.Open;
+            bytes[offset++] = facet.Dfcache;
+            bytes[offset++] = facet.Shake;
+            bytes[offset++] = facet.CutHole;
+
+            facet.Counter.CopyTo(bytes, offset);
+            offset += 2;
+
+            return bytes;
+        }
+
+        // Helper method for storey serialization
+        private static byte[] WriteSingleStoreyToBytes(DStorey storey)
+        {
+            byte[] bytes = new byte[6];
+            int offset = 0;
+
+            BitConverter.GetBytes(storey.Style).CopyTo(bytes, offset);
+            offset += 2;
+
+            BitConverter.GetBytes(storey.Index).CopyTo(bytes, offset);
+            offset += 2;
+
+            bytes[offset++] = (byte)storey.Count;
+            bytes[offset++] = storey.BloodyPadding;
+
+            return bytes;
+        }
+
     }
 }
