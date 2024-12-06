@@ -37,6 +37,7 @@
                     <MenuItem Header="Raw Building Data" Click="ViewRawBuildingData_Click" />
                 </MenuItem>
                 <MenuItem Header="Dump Building Data" Click="DumpBuildingData_Click" />
+                <MenuItem Header="Save Building Data" Click="SaveBuildingData_Click" />
             </MenuItem>
             
         </Menu>
@@ -55,6 +56,7 @@
                     <Button Content="Buildings" Click="EditBuildingsButton_Click" x:Name="EditBuildingsButton" Width="75" Height="30" Margin="5,0" IsEnabled="False"/>
                     <Button Content="Prims" Click="EditPrimsButton_Click" x:Name="EditPrimsButton" Width="75" Height="30" Margin="5,0" IsEnabled="False"/>
                     <Button Content="Lights" Click="EditLightsButton_Click" x:Name="EditLightsButton" Width="75" Height="30" Margin="5,0" IsEnabled="False"/>
+                    <Button Content="Walls" Click="EditWallsButton_Click" x:Name="EditWallsButton" Width="75" Height="30" Margin="5,0" IsEnabled="False"/>
                 </StackPanel>
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="10,0">

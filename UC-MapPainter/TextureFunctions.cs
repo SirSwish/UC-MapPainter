@@ -98,6 +98,7 @@ namespace UC_MapPainter
 
                     cell.MouseLeftButtonDown += mainWindow.Cell_MouseLeftButtonDown;
                     cell.MouseRightButtonDown += mainWindow.Cell_MouseRightButtonDown;
+                    cell.MouseMove += mainWindow.Cell_MouseMove;
 
                     Grid.SetRow(cell, 127 - row); // Correct mapping for row
                     Grid.SetColumn(cell, 127 - col); // Correct mapping for column
