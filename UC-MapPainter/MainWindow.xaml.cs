@@ -599,13 +599,43 @@ namespace UC_MapPainter
 
         private void SaveBuildingData_Click(object sender, RoutedEventArgs e)
         {
-            //int iamBuildingsOffset = 98314;
+            //int iamBuildingsOffset = 98314;^
             //Map.WriteBuildingsMock(modifiedFileBytes, iamBuildingsOffset);
             List<byte> buildingsData = Map.PrepareBuildingsMock(buildings, facets, storeys);
             int startEmptyIamBuildingsOffset = 98314;
             // next_dbuilding+next_dfacet+next_dstyle+next_paint_mem+next_dstorey+sizeof(struct DBuilding)+ sizeof(struct DFacet) + sizeof(UWORD) + sizeof(UBYTE) + sizeof(next_dstorey)
             //int next_dfacet_offset = 2;
-            int endEmptyIamBuildingsOffset = startEmptyIamBuildingsOffset + 2+2+2+2+2+ 24+26+2+1+6;
+
+            int next_dbuildings_offset = 2;
+            int next_dfacet_offset = 2;
+            int next_dstyle_offset = 2;
+            int next_paint_mem_offset = 2;
+            int next_dstorey_offset = 2;
+            int dbuilding_offset = 24;
+            int dfacet_offset = 26;
+            int dstyle_offset = 2;
+            int paint_mem_offset = 1;
+            int dstorey_offset = 6;
+            int next_inside_storey_offset = 2;
+            int next_inside_stair_offset = 2;
+            int next_inside_block_offset = 4;
+            int inside_storeys_offset = 22;
+            int inside_stairs_offset = 10;
+            int inside_block_offset = 1;
+            int next_dwalkable_offset = 2;
+            int next_roof_face4_offset = 2;
+            int dwalkables_offset = 22;
+            int roof_face4_offset = 10;
+
+
+            int buildingsOffset = next_dbuildings_offset + next_dfacet_offset + next_dstyle_offset + next_paint_mem_offset + next_dstorey_offset + dbuilding_offset +
+            dfacet_offset + dstyle_offset + paint_mem_offset + dstorey_offset + next_inside_storey_offset + next_inside_stair_offset + next_inside_block_offset +
+            inside_storeys_offset + inside_stairs_offset + inside_block_offset + next_dwalkable_offset + next_roof_face4_offset + dwalkables_offset + roof_face4_offset;
+
+            //int walkableOffsets = 3 + 33 + 2 + 2 + 22 + 10;
+            //int endEmptyIamBuildingsOffset = startEmptyIamBuildingsOffset + 2+2+2+2+2+ 24+26+2+1+6 + walkableOffsets;
+            
+            int endEmptyIamBuildingsOffset = startEmptyIamBuildingsOffset + buildingsOffset;
 
             // Create a dynamic list for the new byte array
             List<byte> resultBytes = new List<byte>();

@@ -24,7 +24,7 @@ namespace UC_MapPainter
         // 2-byte unsigned integers
         public ushort FacetFlags { get; set; } = 256; // Default: 256
         public ushort StyleIndex { get; set; } = 1;   // Default: 1
-        public ushort Building { get; set; }
+        public ushort Building { get; set; } = 1;
         public ushort DStorey { get; set; }
 
         // 1-byte unsigned integers
