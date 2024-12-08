@@ -601,6 +601,38 @@ namespace UC_MapPainter
         {
             //int iamBuildingsOffset = 98314;^
             //Map.WriteBuildingsMock(modifiedFileBytes, iamBuildingsOffset);
+
+            // UPDATE PAP 
+
+            // THIS IS JUST FOR TESTS AS BUILDINGS AREN'T ALWAYS SQUARED
+            // Find the lowest and biggest X and Z values
+            byte minX = facets.Min(facet => Math.Min(facet.X[0], facet.X[1]));
+            byte maxX = facets.Max(facet => Math.Max(facet.X[0], facet.X[1]));
+
+            byte minZ = facets.Min(facet => Math.Min(facet.Z[0], facet.Z[1]));
+            byte maxZ = facets.Max(facet => Math.Max(facet.Z[0], facet.Z[1]));
+
+            //minX = 0;
+            //maxX = 127;
+            //minZ = 0;
+            //maxZ = 127;
+            for (int i = minX; i <= maxX; i++)
+            {
+                for( int j = minZ; j <= maxZ; j++)
+                {
+
+                    int cellOffset = textureFunctions.FindCellTexOffset(i, j);
+                    ushort hardcodedRoofFlags = 592;
+
+                    Map.WritePapFlagsData(modifiedFileBytes, hardcodedRoofFlags, cellOffset);
+                    Map.WriteAltData(modifiedFileBytes, 4, cellOffset);
+
+                    //UpdateTileHeight(cellOffset);
+                }
+            }
+
+
+
             List<byte> buildingsData = Map.PrepareBuildingsMock(buildings, facets, storeys);
             int startEmptyIamBuildingsOffset = 98314;
             // next_dbuilding+next_dfacet+next_dstyle+next_paint_mem+next_dstorey+sizeof(struct DBuilding)+ sizeof(struct DFacet) + sizeof(UWORD) + sizeof(UBYTE) + sizeof(next_dstorey)
@@ -1035,6 +1067,8 @@ namespace UC_MapPainter
                     // Calculate the nearest corner
                     Point clickedCorner = GetNearestCorner((128 - col) * 64, (128 - row) * 64);
 
+                    Point newPoint = new Point(row, col);
+
                     if (currentStartPoint == null)
                     {
                         // Start a new wall
@@ -1068,7 +1102,7 @@ namespace UC_MapPainter
 
                     // Add the point to the current building's points
                     //currentBuildingPoints.Add(new Point(snappedX, snappedZ));
-                    currentBuildingPoints.Add(clickedCorner);
+                    currentBuildingPoints.Add(newPoint);
 
                     // If there's at least one previous point, create a line and a facet
                     if (currentBuildingPoints.Count > 1)
@@ -1079,8 +1113,11 @@ namespace UC_MapPainter
                         // Create a new facet
                         var newFacet = new DFacet
                         {
-                            X = new byte[] { (byte)(startPoint.X / 64), (byte)(endPoint.X / 64) },
-                            Z = new byte[] { (byte)(startPoint.Y / 64), (byte)(endPoint.Y / 64) }
+                            //X = new byte[] { (byte)(startPoint.X / 64), (byte)(endPoint.X / 64) },
+                            //Z = new byte[] { (byte)(startPoint.Y / 64), (byte)(endPoint.Y / 64) }
+                            
+                            X = new byte[] { (byte)(startPoint.X), (byte)(endPoint.X ) },
+                            Z = new byte[] { (byte)(startPoint.Y), (byte)(endPoint.Y ) }
                         };
 
                         facets.Add(newFacet);

@@ -196,9 +196,21 @@ namespace UC_MapPainter
             Array.Copy(newTextureData, 0, newFileBytes, HeaderSize + offset, 6);
         }
 
-        public static void WriteHeightData(byte[] newFileBytes, byte height, int offset)
+        public static void WriteHeightData(byte[] newFileBytes, byte height, int offset) // This one is actually PAP.alt
         {
             newFileBytes[8 + offset + 4] = height;
+        }
+
+        public static void WriteAltData(byte[] newFileBytes, byte height, int offset) // This one is actually PAP.height
+        {
+            newFileBytes[8 + offset + 5] = height;
+        }
+
+        public static void WritePapFlagsData(byte[] newFileBytes, ushort flags, int offset)
+        {
+            //newFileBytes[8 + offset + 1] = flags;
+
+            BitConverter.GetBytes(flags).CopyTo(newFileBytes, 8 + offset + 2);
         }
 
         //Write the new building data to buffer
@@ -309,10 +321,16 @@ namespace UC_MapPainter
             DFacet defaultFacet = new DFacet(true);
             byteBuffer.AddRange(WriteSingleFacetToBytes(defaultFacet));
 
-            // Write existing facets
-            foreach (var f in facets)
+            //// Write existing facets
+            //foreach (var f in facets)
+            //{
+            //    byteBuffer.AddRange(WriteSingleFacetToBytes(f));
+            //}
+
+            for (int i = 0; i < facets.Count; i++)
             {
-                byteBuffer.AddRange(WriteSingleFacetToBytes(f));
+                facets[i].StyleIndex = (ushort)(i + 1); // Cast to ushort if necessary
+                byteBuffer.AddRange(WriteSingleFacetToBytes(facets[i]));
             }
 
             // Example for styles (assumed 1 byte per style)
@@ -372,6 +390,8 @@ namespace UC_MapPainter
             walkableMock.EndFace4 = 1;
             walkableMock.Y = 8;
             walkableMock.Building = 1;
+            walkableMock.StartPoint = 12773;
+            walkableMock.EndPoint = 12789;
 
             AssignWalkableBoundsFromFacets(facets, walkableMock);
 
