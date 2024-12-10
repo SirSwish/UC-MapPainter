@@ -616,9 +616,9 @@ namespace UC_MapPainter
             //maxX = 127;
             //minZ = 0;
             //maxZ = 127;
-            for (int i = minX; i <= maxX; i++)
+            for (int i = minX; i < maxX; i++)
             {
-                for( int j = minZ; j <= maxZ; j++)
+                for( int j = minZ; j < maxZ; j++)
                 {
 
                     int cellOffset = textureFunctions.FindCellTexOffset(i, j);
