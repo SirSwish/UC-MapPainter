@@ -81,6 +81,9 @@ namespace UC_MapPainter
         }
         public bool graphicsEnabled = true;
 
+        //Walls
+        internal WallSelectionWindow wallSelectionWindow;
+
         //Buildings
         private BuildingFunctions buildingFunctions;
 
@@ -95,6 +98,10 @@ namespace UC_MapPainter
         private List<DStorey> storeys = new(); // List of all buildings created
         private int currentFacetIndex = 1; // Index of the next facet to be created
         private Line previewLine = null;
+        
+        private Line selectedWall = null;
+
+        private Dictionary<Line, DFacet> wallLines = new Dictionary<Line, DFacet>();
 
         //private List<Point> mWallPoints = new List<Point>();
 
@@ -172,6 +179,17 @@ namespace UC_MapPainter
             CheckForUnsavedChanges();
         }
 
+        private void InitializeWallsSelectionWindow()
+        {
+            wallSelectionWindow = new WallSelectionWindow();
+            wallSelectionWindow.SetMainWindow(this);
+            wallSelectionWindow.Left = this.Left + this.Width - wallSelectionWindow.Width - 10;
+            wallSelectionWindow.Top = 50;
+            //wallSelectionWindow.Closed += PrimSelectionWindow_Closed;
+            wallSelectionWindow.Show();
+            wallSelectionWindow.Owner = this; // Set the owner after showing the window
+            PrimSelectionMenuItem.IsEnabled = false; // Disable the menu item
+        }
         private void InitializePrimSelectionWindow()
         {
             if (primSelectionWindow == null || !primSelectionWindow.IsLoaded)
@@ -239,6 +257,12 @@ namespace UC_MapPainter
         ///////////////
         //Click Events
         ///////////////
+        ///
+        //private void BuildingSelection_Click(object sender, RoutedEventArgs e)
+        //{
+        //    InitializeWallsSelectionWindow();
+        //}
+
         private void PrimSelection_Click(object sender, RoutedEventArgs e)
         {
             InitializePrimSelectionWindow();
@@ -358,7 +382,9 @@ namespace UC_MapPainter
             OverlayGrid.Visibility = Visibility.Visible;
             // Call the DrawBuildings method to visualize the buildings
             SetEditMode("Buildings");
-            buildingFunctions.DrawBuildings(modifiedFileBytes, OverlayGrid);
+            InitializeWallsSelectionWindow();
+            
+            //buildingFunctions.DrawBuildings(modifiedFileBytes, OverlayGrid);
             
         }
 
@@ -1065,9 +1091,9 @@ namespace UC_MapPainter
                     int col = 127 - Grid.GetColumn(cell);
 
                     // Calculate the nearest corner
-                    Point clickedCorner = GetNearestCorner((128 - col) * 64, (128 - row) * 64);
+                    //Point clickedCorner = GetNearestCorner((128 - col) * 64, (128 - row) * 64);
 
-                    Point newPoint = new Point(row, col);
+                    Point clickedCorner = new Point(col, row);
 
                     if (currentStartPoint == null)
                     {
@@ -1075,13 +1101,13 @@ namespace UC_MapPainter
                         currentStartPoint = clickedCorner;
                         //currentBuildingPoints.Add(clickedCorner);
                     }
-                    else
-                    {
-                        // Draw the wall and update the state
-                        DrawWallLine(currentStartPoint.Value, clickedCorner);
-                        currentStartPoint = clickedCorner;
-                        //currentBuildingPoints.Add(clickedCorner);
-                    }
+                    //else
+                    //{
+                    //    // Draw the wall and update the state
+                    //    DrawWallLine(currentStartPoint.Value, clickedCorner);
+                    //    currentStartPoint = clickedCorner;
+                    //    //currentBuildingPoints.Add(clickedCorner);
+                    //}
 
                     // Remove the preview line after confirming the wall
                     if (previewLine != null)
@@ -1090,19 +1116,7 @@ namespace UC_MapPainter
                         previewLine = null;
                     }
 
-                    //// Get the clicked cell's grid coordinates
-                    //int row = 127 - Grid.GetRow(cell);
-                    //int col = 127 - Grid.GetColumn(cell);
-
-
-
-                    //// Snap to the nearest corner (grid size assumed to be 64x64)
-                    //int snappedX = col * 64;
-                    //int snappedZ = row * 64;
-
-                    // Add the point to the current building's points
-                    //currentBuildingPoints.Add(new Point(snappedX, snappedZ));
-                    currentBuildingPoints.Add(newPoint);
+                    currentBuildingPoints.Add(clickedCorner);
 
                     // If there's at least one previous point, create a line and a facet
                     if (currentBuildingPoints.Count > 1)
@@ -1122,21 +1136,31 @@ namespace UC_MapPainter
 
                         facets.Add(newFacet);
 
+
                         // Render the wall line
                         Line wallLine = new Line
                         {
                             Stroke = Brushes.Magenta,
                             StrokeThickness = 12,
-                            X1 = startPoint.X,
-                            Y1 = startPoint.Y,
-                            X2 = endPoint.X,
-                            Y2 = endPoint.Y
+                            X1 = (128 - clickedCorner.X          ) * 64,
+                            Y1 = (128 - clickedCorner.Y          ) * 64,
+                            X2 = (128 - currentStartPoint.Value.X) * 64,
+                            Y2 = (128 - currentStartPoint.Value.Y) * 64
+                            //IsHitTestVisible = true
                         };
 
-                        // Add the wall line to the grid overlay
+                        // Attach mouse event for selection
+                        // Doesn't really work
+                        //wallLine.MouseDown += WallLine_MouseDown;
+
+                        // Add the wall line to the grid overlay and dictionary
                         OverlayGrid.Children.Add(wallLine);
+                        wallLines[wallLine] = newFacet;
 
                         currentFacetIndex++;
+
+
+                        currentStartPoint = clickedCorner;
                     }
 
 
@@ -1324,7 +1348,7 @@ namespace UC_MapPainter
                 int row = 127 - Grid.GetRow(cell);
                 int col = 127 - Grid.GetColumn(cell);
 
-                Point nearestCorner = GetNearestCorner((128 - col) * 64, (128 - row) * 64);
+                Point nearestCorner = new Point(col, row);
 
                 // Update or create the preview line
                 if (previewLine == null)
@@ -1337,13 +1361,122 @@ namespace UC_MapPainter
                     OverlayGrid.Children.Add(previewLine);
                 }
 
-                previewLine.X1 = currentStartPoint.Value.X;
-                previewLine.Y1 = currentStartPoint.Value.Y;
-                previewLine.X2 = nearestCorner.X;
-                previewLine.Y2 = nearestCorner.Y;
+                previewLine.X1 = (128 - currentStartPoint.Value.X)*64;
+                previewLine.Y1 = (128 - currentStartPoint.Value.Y) * 64;
+                previewLine.X2 = (128 - nearestCorner.X) * 64;
+                previewLine.Y2 = (128 - nearestCorner.Y) * 64;
             }
         }
 
+        // Doesn't really work
+        //private void WallLine_MouseDown(object sender, MouseButtonEventArgs e)
+        //{
+        //    if (e.ChangedButton == MouseButton.Middle)
+        //    {
+        //        Line clickedWall = sender as Line;
+
+        //        // Deselect the previously selected wall
+        //        if (selectedWall != null)
+        //        {
+        //            selectedWall.Stroke = Brushes.Magenta; // Restore the original color
+        //        }
+
+        //        // Select the new wall
+        //        selectedWall = clickedWall;
+        //        selectedWall.Stroke = Brushes.Yellow; // Highlight with a different color
+
+        //        // Optionally, fetch the associated DFacet for editing
+        //        if (wallLines.TryGetValue(selectedWall, out DFacet selectedFacet))
+        //        {
+        //            // Display or modify properties of selectedFacet here
+        //            MessageBox.Show($"Selected wall facet: {selectedFacet}");
+        //        }
+        //    }
+        //}
+
+        private double DistanceFromPointToLine(Point p, Point lineStart, Point lineEnd)
+        {
+            // Calculate the line segment vector
+            double lineLengthSquared = Math.Pow(lineEnd.X - lineStart.X, 2) + Math.Pow(lineEnd.Y - lineStart.Y, 2);
+
+            if (lineLengthSquared == 0)
+                return Math.Sqrt(Math.Pow(p.X - lineStart.X, 2) + Math.Pow(p.Y - lineStart.Y, 2)); // Line start and end are the same
+
+            // Projection of point onto the line segment
+            double t = ((p.X - lineStart.X) * (lineEnd.X - lineStart.X) + (p.Y - lineStart.Y) * (lineEnd.Y - lineStart.Y)) / lineLengthSquared;
+            t = Math.Max(0, Math.Min(1, t)); // Clamp to [0, 1] to ensure the projection is on the segment
+
+            // Find the closest point on the line segment
+            double closestX = lineStart.X + t * (lineEnd.X - lineStart.X);
+            double closestY = lineStart.Y + t * (lineEnd.Y - lineStart.Y);
+
+            // Return the distance between the point and the closest point on the segment
+            return Math.Sqrt(Math.Pow(p.X - closestX, 2) + Math.Pow(p.Y - closestY, 2));
+        }
+
+        public void Cell_MouseMiddleButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Border cell)
+            {
+                if (currentEditMode == "Buildings")
+                {
+                    if (e.ChangedButton == MouseButton.Middle)
+                    {
+                        // Get the click position
+                        //Point clickPoint = e.GetPosition(OverlayGrid);
+
+
+                        int row = 127 - Grid.GetRow(cell);
+                        int col = 127 - Grid.GetColumn(cell);
+
+                        Point clickPoint = new Point(col, row);
+
+
+                        Line closestLine = null;
+                        double minDistance = double.MaxValue;
+
+                        foreach (var kvp in wallLines)
+                        {
+                            Line wallLine = kvp.Key;
+                            DFacet facet = kvp.Value;
+
+                            // Get the start and end points of the line
+                            Point lineStart = new Point(facet.X[0], facet.Z[0] );
+                            Point lineEnd = new Point(facet.X[1] , facet.Z[1] );
+
+                            // Calculate the distance from the click to this line
+                            double distance = DistanceFromPointToLine(clickPoint, lineStart, lineEnd);
+
+                            // Update the closest line if this one is closer
+                            if (distance < minDistance)
+                            {
+                                minDistance = distance;
+                                closestLine = wallLine;
+                            }
+                        }
+
+                        // Highlight the closest line
+                        if (closestLine != null)
+                        {
+                            if (selectedWall != null)
+                            {
+                                selectedWall.Stroke = Brushes.Magenta; // Restore original color
+                            }
+
+                            selectedWall = closestLine;
+                            selectedWall.Stroke = Brushes.Yellow; // Highlight selected line
+
+                            // Optionally, fetch the associated DFacet for editing
+                            if (wallLines.TryGetValue(selectedWall, out DFacet selectedFacet))
+                            {
+                                // Display the selected facet's information (replace with your logic)
+                                MessageBox.Show($"Selected wall: X1={selectedFacet.X[0]}, X2={selectedFacet.X[1]}, Z1={selectedFacet.Z[0]}, Z2={selectedFacet.Z[1]}");
+                            }
+                        }
+                    }
+                }
+            }
+        }
         public void Cell_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.RightButton == MouseButtonState.Pressed && sender is Border cell)
@@ -1402,6 +1535,8 @@ namespace UC_MapPainter
 
                     // Reset the current building points for the next building
                     currentBuildingPoints.Clear();
+
+                    currentStartPoint = null;
 
                     MessageBox.Show($"Building created with facets {newBuilding.StartFacet} to {newBuilding.EndFacet}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
@@ -1617,7 +1752,8 @@ namespace UC_MapPainter
                 X1 = start.X,
                 Y1 = start.Y,
                 X2 = end.X,
-                Y2 = end.Y
+                Y2 = end.Y,
+                IsHitTestVisible = true // Ensure this line responds to mouse events
             };
 
             OverlayGrid.Children.Add(wallLine);

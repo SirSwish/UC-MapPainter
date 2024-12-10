@@ -1,0 +1,14 @@
+﻿<Window x:Class="UC_MapPainter.WallSelectionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:UC_MapPainter"
+        mc:Ignorable="d"
+        Title="WallSelectionWindow" Height="450" Width="400">
+    <Grid>
+        <CheckBox Content="Climable" HorizontalAlignment="Left" Margin="176,143,0,0" VerticalAlignment="Top" Checked="CheckBox_Checked"/>
+        <TextBlock HorizontalAlignment="Left" Margin="106,76,0,0" TextWrapping="Wrap" Text="Currently selected wall:" VerticalAlignment="Top"/>
+
+    </Grid>
+</Window>
