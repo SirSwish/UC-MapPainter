@@ -65,5 +65,10 @@ namespace UC_MapPainter
                 Counter = new byte[2] { 0, 0 };
             }
         }
+
+        public void setClimbable()
+        {
+            FacetFlags |= (1 << 6);
+        }
     }
 }

@@ -100,6 +100,7 @@ namespace UC_MapPainter
         private Line previewLine = null;
         
         private Line selectedWall = null;
+        private DFacet selectedFacet = null;
 
         private Dictionary<Line, DFacet> wallLines = new Dictionary<Line, DFacet>();
 
@@ -1467,10 +1468,13 @@ namespace UC_MapPainter
                             selectedWall.Stroke = Brushes.Yellow; // Highlight selected line
 
                             // Optionally, fetch the associated DFacet for editing
-                            if (wallLines.TryGetValue(selectedWall, out DFacet selectedFacet))
+                            if (wallLines.TryGetValue(selectedWall, out DFacet facet))
                             {
+                                selectedFacet = facet;
                                 // Display the selected facet's information (replace with your logic)
                                 MessageBox.Show($"Selected wall: X1={selectedFacet.X[0]}, X2={selectedFacet.X[1]}, Z1={selectedFacet.Z[0]}, Z2={selectedFacet.Z[1]}");
+
+                                selectedFacet.setClimbable();
                             }
                         }
                     }
