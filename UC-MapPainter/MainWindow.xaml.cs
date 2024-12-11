@@ -183,7 +183,7 @@ namespace UC_MapPainter
         private void InitializeWallsSelectionWindow()
         {
             wallSelectionWindow = new WallSelectionWindow();
-            wallSelectionWindow.SetMainWindow(this);
+            //wallSelectionWindow.SetMainWindow(this);
             wallSelectionWindow.Left = this.Left + this.Width - wallSelectionWindow.Width - 10;
             wallSelectionWindow.Top = 50;
             //wallSelectionWindow.Closed += PrimSelectionWindow_Closed;
@@ -1472,9 +1472,20 @@ namespace UC_MapPainter
                             {
                                 selectedFacet = facet;
                                 // Display the selected facet's information (replace with your logic)
-                                MessageBox.Show($"Selected wall: X1={selectedFacet.X[0]}, X2={selectedFacet.X[1]}, Z1={selectedFacet.Z[0]}, Z2={selectedFacet.Z[1]}");
 
-                                selectedFacet.setClimbable();
+
+                                // Pass the selected facet to WallSelectionWindow
+                                if (wallSelectionWindow == null || !wallSelectionWindow.IsVisible)
+                                {
+                                    wallSelectionWindow = new WallSelectionWindow();
+                                    wallSelectionWindow.Show();
+                                }
+                                wallSelectionWindow.SetSelectedFacet(selectedFacet);
+
+
+                                //MessageBox.Show($"Selected wall: X1={selectedFacet.X[0]}, X2={selectedFacet.X[1]}, Z1={selectedFacet.Z[0]}, Z2={selectedFacet.Z[1]}");
+
+                                //  selectedFacet.setClimbable();
                             }
                         }
                     }
@@ -1543,6 +1554,9 @@ namespace UC_MapPainter
                     currentStartPoint = null;
 
                     MessageBox.Show($"Building created with facets {newBuilding.StartFacet} to {newBuilding.EndFacet}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    OverlayGrid.Children.Remove(previewLine);
+                    previewLine = null;
                 }
                 else if (currentEditMode == "Prims")
                 {
