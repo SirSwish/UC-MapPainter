@@ -26,6 +26,11 @@ namespace UC_MapPainter
             Map.WriteHeightData(mainWindow.ModifiedFileBytes, (byte)Height, offset);
         }
 
+        public void UpdateTileFlags(int offset, ushort flags)
+        {
+            Map.WritePapFlagsData(mainWindow.ModifiedFileBytes, flags, offset);
+        }
+
         public void UpdateTileSequence(bool isDefaultTexture, int offset)
         {
             byte textureByte = 0;

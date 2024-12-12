@@ -196,9 +196,21 @@ namespace UC_MapPainter
             Array.Copy(newTextureData, 0, newFileBytes, HeaderSize + offset, 6);
         }
 
-        public static void WriteHeightData(byte[] newFileBytes, byte height, int offset)
+        public static void WriteHeightData(byte[] newFileBytes, byte height, int offset) // This one is actually PAP.alt
         {
             newFileBytes[8 + offset + 4] = height;
+        }
+
+        public static void WriteAltData(byte[] newFileBytes, byte height, int offset) // This one is actually PAP.height
+        {
+            newFileBytes[8 + offset + 5] = height;
+        }
+
+        public static void WritePapFlagsData(byte[] newFileBytes, ushort flags, int offset)
+        {
+            //newFileBytes[8 + offset + 1] = flags;
+
+            BitConverter.GetBytes(flags).CopyTo(newFileBytes, 8 + offset + 2);
         }
 
         //Write the new building data to buffer
@@ -253,6 +265,27 @@ namespace UC_MapPainter
             Array.Copy(newPSXTextureData, 0, newFileBytes, newFileBytes.Length - 2000, 2000);
         }
 
+        private static void AssignWalkableBoundsFromFacets(List<DFacet> facets, DWalkable walkable)
+        {
+            if (facets == null || facets.Count == 0)
+            {
+                throw new ArgumentException("Facet list cannot be null or empty.");
+            }
+
+            // Find the lowest and biggest X and Z values
+            byte minX = facets.Min(facet => Math.Min(facet.X[0], facet.X[1]));
+            byte maxX = facets.Max(facet => Math.Max(facet.X[0], facet.X[1]));
+
+            byte minZ = facets.Min(facet => Math.Min(facet.Z[0], facet.Z[1]));
+            byte maxZ = facets.Max(facet => Math.Max(facet.Z[0], facet.Z[1]));
+
+            // Assign values to the walkable object
+            walkable.X1 = minX;
+            walkable.X2 = maxX;
+            walkable.Z1 = minZ;
+            walkable.Z2 = maxZ;
+        }
+
         public static List<byte> PrepareBuildingsMock(List<DBuilding> buildings, List<DFacet> facets, List<DStorey> storeys)
         {
             // Initialize a dynamic buffer
@@ -288,17 +321,27 @@ namespace UC_MapPainter
             DFacet defaultFacet = new DFacet(true);
             byteBuffer.AddRange(WriteSingleFacetToBytes(defaultFacet));
 
-            // Write existing facets
-            foreach (var f in facets)
+            //// Write existing facets
+            //foreach (var f in facets)
+            //{
+            //    byteBuffer.AddRange(WriteSingleFacetToBytes(f));
+            //}
+
+            for (int i = 0; i < facets.Count; i++)
             {
-                byteBuffer.AddRange(WriteSingleFacetToBytes(f));
+                facets[i].StyleIndex = (ushort)(i + 1); // Cast to ushort if necessary
+                byteBuffer.AddRange(WriteSingleFacetToBytes(facets[i]));
             }
 
             // Example for styles (assumed 1 byte per style)
-            byteBuffer.Add(0); // Start of styles
+            ushort style = 0;
+            byteBuffer.AddRange(BitConverter.GetBytes(style));
+
+            //byteBuffer.Add(0); // Start of styles
             for (int i = 0; i < facets.Count; i++)
             {
-                byteBuffer.Add(3); // Example value for style
+                style = 3;
+                byteBuffer.AddRange(BitConverter.GetBytes(style));
             }
 
             // Example for paint memory
@@ -311,28 +354,76 @@ namespace UC_MapPainter
 
 
             // UNCHANGED FOR NOW
-            //ushort next_inside_storey = 1;
-            //byteBuffer.AddRange(BitConverter.GetBytes(next_inside_storey));
+            ushort next_inside_storey = 1;
+            byteBuffer.AddRange(BitConverter.GetBytes(next_inside_storey));
 
-            //ushort next_inside_stair = 1;
-            //byteBuffer.AddRange(BitConverter.GetBytes(next_inside_stair));
+            ushort next_inside_stair = 1;
+            byteBuffer.AddRange(BitConverter.GetBytes(next_inside_stair));
 
-            //ushort next_block = 1;
-            //byteBuffer.AddRange(BitConverter.GetBytes(next_block));
+            int next_block = 1;
+            byteBuffer.AddRange(BitConverter.GetBytes(next_block));
 
-            ////FileWrite(handle, &inside_storeys[0], sizeof(struct InsideStorey)*next_inside_storey);
-            ////FileWrite(handle,&inside_stairs[0],sizeof(struct Staircase)*next_inside_stair);
-            ////FileWrite(handle,&inside_block[0],sizeof(UBYTE)* next_inside_block);
+            //FileWrite(handle, &inside_storeys[0], sizeof(struct InsideStorey)*next_inside_storey);
+            //FileWrite(handle,&inside_stairs[0],sizeof(struct Staircase)*next_inside_stair);
+            //FileWrite(handle,&inside_block[0],sizeof(UBYTE)* next_inside_block);
 
-            //// sizeof(struct InsideStorey) - 22  bytes
-            //// sizeof(struct Staircase) - 10 bytes
+            // sizeof(struct InsideStorey) - 22  bytes
+            // sizeof(struct Staircase) - 10 bytes
 
-            //for (int i = 0; i < 33; i++)
-            //{
-            //    byteBuffer.Add(0); // Ignore InsideStorey Staircase data for now
-            //}
+            for (int i = 0; i < 33; i++)
+            {
+                byteBuffer.Add(0); // Ignore InsideStorey Staircase data for now
+            }
 
-            // sizeof(struct DWalkable) - 22 bytes
+
+            ushort next_dwalkable = 2;
+            byteBuffer.AddRange(BitConverter.GetBytes(next_dwalkable));
+
+            ushort next_roof_face4 = 1;
+            byteBuffer.AddRange(BitConverter.GetBytes(next_roof_face4));
+
+            DWalkable dWalkable = new DWalkable();
+            byteBuffer.AddRange(WriteSingleWalkableToBytes(dWalkable));
+
+            DWalkable walkableMock = new DWalkable();
+            walkableMock.StartFace4 = 1;
+            walkableMock.EndFace4 = 1;
+            walkableMock.Y = 8;
+            walkableMock.Building = 1;
+            walkableMock.StartPoint = 12773;
+            walkableMock.EndPoint = 12789;
+
+            AssignWalkableBoundsFromFacets(facets, walkableMock);
+
+            byteBuffer.AddRange(WriteSingleWalkableToBytes(walkableMock));
+
+
+            // Emtpy RoofFace4 For now
+            for (int i = 0; i < 10; i++)
+            {
+                byteBuffer.Add(0); // Ignore InsideStorey Staircase data for now
+            }
+
+
+            //ushort roof_face4Y = 256;
+            //byteBuffer.AddRange(BitConverter.GetBytes(roof_face4Y));
+
+            //byteBuffer.Add(0);
+            //byteBuffer.Add(0);
+            //byteBuffer.Add(0); // DY[3]
+
+            //byteBuffer.Add(0); //DrawFlags
+
+            //byteBuffer.Add((byte)(walkableMock.X2 - 1));
+            //byteBuffer.Add((byte)(walkableMock.Z2 - 1));
+
+            //byteBuffer.Add(0);
+
+
+
+
+            // 3+33+22+22+10
+            // sizeof(struct DWalkable) - 22 bytes 
             // sizeof(struct RoofFace4) - 10 bytes
 
             return byteBuffer; // Return the prepared byte list
@@ -434,6 +525,47 @@ namespace UC_MapPainter
 
             bytes[offset++] = (byte)storey.Count;
             bytes[offset++] = storey.BloodyPadding;
+
+            return bytes;
+        }
+
+        private static byte[] WriteSingleWalkableToBytes(DWalkable walkable)
+        {
+            byte[] bytes = new byte[22]; // Total size of the DWalkable structure
+            int offset = 0;
+
+            BitConverter.GetBytes(walkable.StartPoint).CopyTo(bytes, offset);
+            offset += 2;
+
+            BitConverter.GetBytes(walkable.EndPoint).CopyTo(bytes, offset);
+            offset += 2;
+
+            BitConverter.GetBytes(walkable.StartFace3).CopyTo(bytes, offset);
+            offset += 2;
+
+            BitConverter.GetBytes(walkable.EndFace3).CopyTo(bytes, offset);
+            offset += 2;
+
+            BitConverter.GetBytes(walkable.StartFace4).CopyTo(bytes, offset);
+            offset += 2;
+
+            BitConverter.GetBytes(walkable.EndFace4).CopyTo(bytes, offset);
+            offset += 2;
+
+            bytes[offset++] = walkable.X1;
+            bytes[offset++] = walkable.Z1;
+            bytes[offset++] = walkable.X2;
+            bytes[offset++] = walkable.Z2;
+            bytes[offset++] = walkable.Y;
+            bytes[offset++] = walkable.StoreyY;
+
+            BitConverter.GetBytes(walkable.Next).CopyTo(bytes, offset);
+            offset += 2;
+
+            BitConverter.GetBytes(walkable.Building).CopyTo(bytes, offset);
+            offset += 2;
+
+            //BitConverter.GetBytes(walkable.Building).CopyTo(bytes, offset);
 
             return bytes;
         }
