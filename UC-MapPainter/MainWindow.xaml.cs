@@ -624,6 +624,48 @@ namespace UC_MapPainter
             }
         }
 
+        List<(int X, int Z)> GetPolygonFromFacets(IEnumerable<DFacet> facets)
+        {
+            var polygon = new List<(int X, int Z)>();
+
+            // Assumes facets are ordered; adjust if needed
+            foreach (var facet in facets)
+            {
+                polygon.Add((facet.X[0], facet.Z[0]));
+                polygon.Add((facet.X[1], facet.Z[1]));
+            }
+
+            // Optionally remove duplicates if facets share vertices
+            return polygon.Distinct().ToList();
+        }
+
+        (int minX, int maxX, int minZ, int maxZ) GetBoundingBox(List<(int X, int Z)> polygon)
+        {
+            int minX = polygon.Min(point => point.X);
+            int maxX = polygon.Max(point => point.X);
+            int minZ = polygon.Min(point => point.Z);
+            int maxZ = polygon.Max(point => point.Z);
+
+            return (minX, maxX, minZ, maxZ);
+        }
+
+        bool IsPointInPolygon(int x, int z, List<(int X, int Z)> polygon)
+        {
+            bool isInside = false;
+            int n = polygon.Count;
+
+            for (int i = 0, j = n - 1; i < n; j = i++)
+            {
+                if ((polygon[i].Z > z) != (polygon[j].Z > z) &&
+                    (x < (polygon[j].X - polygon[i].X) * (z - polygon[i].Z) / (polygon[j].Z - polygon[i].Z) + polygon[i].X))
+                {
+                    isInside = !isInside;
+                }
+            }
+
+            return isInside;
+        }
+
         private void SaveBuildingData_Click(object sender, RoutedEventArgs e)
         {
             //int iamBuildingsOffset = 98314;^
@@ -633,28 +675,49 @@ namespace UC_MapPainter
 
             // THIS IS JUST FOR TESTS AS BUILDINGS AREN'T ALWAYS SQUARED
             // Find the lowest and biggest X and Z values
-            byte minX = facets.Min(facet => Math.Min(facet.X[0], facet.X[1]));
-            byte maxX = facets.Max(facet => Math.Max(facet.X[0], facet.X[1]));
+            //byte minX = facets.Min(facet => Math.Min(facet.X[0], facet.X[1]));
+            //byte maxX = facets.Max(facet => Math.Max(facet.X[0], facet.X[1]));
 
-            byte minZ = facets.Min(facet => Math.Min(facet.Z[0], facet.Z[1]));
-            byte maxZ = facets.Max(facet => Math.Max(facet.Z[0], facet.Z[1]));
+            //byte minZ = facets.Min(facet => Math.Min(facet.Z[0], facet.Z[1]));
+            //byte maxZ = facets.Max(facet => Math.Max(facet.Z[0], facet.Z[1]));
 
-            //minX = 0;
-            //maxX = 127;
-            //minZ = 0;
-            //maxZ = 127;
-            for (int i = minX; i < maxX; i++)
+            //for (int i = minX; i < maxX; i++)
+            //{
+            //    for( int j = minZ; j < maxZ; j++)
+            //    {
+
+            //        int cellOffset = textureFunctions.FindCellTexOffset(i, j);
+            //        ushort hardcodedRoofFlags = 592;
+
+            //        Map.WritePapFlagsData(modifiedFileBytes, hardcodedRoofFlags, cellOffset);
+            //        Map.WriteAltData(modifiedFileBytes, 4, cellOffset);
+            //    }
+            //}
+
+
+            foreach (var building in buildings)
             {
-                for( int j = minZ; j < maxZ; j++)
+                // Get facets for the current building
+                var buildingFacets = facets.Skip(building.StartFacet - 1).Take(building.EndFacet - building.StartFacet);
+
+
+                var polygon = GetPolygonFromFacets(buildingFacets);
+                var (minX, maxX, minZ, maxZ) = GetBoundingBox(polygon);
+
+                for (int x = minX; x <= maxX; x++)
                 {
+                    for (int z = minZ; z <= maxZ; z++)
+                    {
+                        // Check if the tile center is inside the polygon
+                        if (IsPointInPolygon(x, z, polygon))
+                        {
+                            int cellOffset = textureFunctions.FindCellTexOffset(x, z);
+                            ushort hardcodedRoofFlags = 592;
 
-                    int cellOffset = textureFunctions.FindCellTexOffset(i, j);
-                    ushort hardcodedRoofFlags = 592;
-
-                    Map.WritePapFlagsData(modifiedFileBytes, hardcodedRoofFlags, cellOffset);
-                    Map.WriteAltData(modifiedFileBytes, 4, cellOffset);
-
-                    //UpdateTileHeight(cellOffset);
+                            Map.WritePapFlagsData(modifiedFileBytes, hardcodedRoofFlags, cellOffset);
+                            Map.WriteAltData(modifiedFileBytes, 4, cellOffset);
+                        }
+                    }
                 }
             }
 
