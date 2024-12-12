@@ -694,21 +694,29 @@ namespace UC_MapPainter
             //    }
             //}
 
-            var polygon = GetPolygonFromFacets(facets);
-            var (minX, maxX, minZ, maxZ) = GetBoundingBox(polygon);
 
-            for (int x = minX; x <= maxX; x++)
+            foreach (var building in buildings)
             {
-                for (int z = minZ; z <= maxZ; z++)
-                {
-                    // Check if the tile center is inside the polygon
-                    if (IsPointInPolygon(x, z, polygon))
-                    {
-                        int cellOffset = textureFunctions.FindCellTexOffset(x, z);
-                        ushort hardcodedRoofFlags = 592;
+                // Get facets for the current building
+                var buildingFacets = facets.Skip(building.StartFacet - 1).Take(building.EndFacet - building.StartFacet);
 
-                        Map.WritePapFlagsData(modifiedFileBytes, hardcodedRoofFlags, cellOffset);
-                        Map.WriteAltData(modifiedFileBytes, 4, cellOffset);
+
+                var polygon = GetPolygonFromFacets(buildingFacets);
+                var (minX, maxX, minZ, maxZ) = GetBoundingBox(polygon);
+
+                for (int x = minX; x <= maxX; x++)
+                {
+                    for (int z = minZ; z <= maxZ; z++)
+                    {
+                        // Check if the tile center is inside the polygon
+                        if (IsPointInPolygon(x, z, polygon))
+                        {
+                            int cellOffset = textureFunctions.FindCellTexOffset(x, z);
+                            ushort hardcodedRoofFlags = 592;
+
+                            Map.WritePapFlagsData(modifiedFileBytes, hardcodedRoofFlags, cellOffset);
+                            Map.WriteAltData(modifiedFileBytes, 4, cellOffset);
+                        }
                     }
                 }
             }
