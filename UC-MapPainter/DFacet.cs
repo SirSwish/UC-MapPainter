@@ -6,6 +6,31 @@ using System.Threading.Tasks;
 
 namespace UC_MapPainter
 {
+    public enum FacetType
+    {
+        Normal = 1,
+        Roof = 2,
+        Wall = 3,
+        RoofQuad = 4,
+        FloorPoints = 5,
+        FireEscape = 6,
+        Staircase = 7,
+        Skylight = 8,
+        Cable = 9,
+        Fence = 10,
+        FenceBrick = 11,
+        Ladder = 12,
+        FenceFlat = 13,
+        Trench = 14,
+        JustCollision = 15,
+        Partition = 16,
+        Inside = 17,
+        Door = 18,
+        InsideDoor = 19,
+        OInside = 20,
+        OutsideDoor = 21,
+        NormalFoundation = 100
+    }
     public class DFacet
     {
         // 1-byte unsigned integer
