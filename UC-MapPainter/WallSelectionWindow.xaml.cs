@@ -1,5 +1,10 @@
-﻿using System.Windows;
+﻿using System;
+using System.Security.AccessControl;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Media3D;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace UC_MapPainter
 {
@@ -16,12 +21,22 @@ namespace UC_MapPainter
         private void WallSelectionWindow_Loaded(object sender, RoutedEventArgs e)
         {
             // Initialize window logic here if needed
+            // Populate the ComboBox with enum values
+            FacetTypeComboBox.ItemsSource = Enum.GetValues(typeof(FacetType))
+                                                .Cast<FacetType>()
+                                                .Select(ft => new { Name = ft.ToString(), Value = (int)ft })
+                                                .ToList();
+
+            // Optionally set default selection
+            FacetTypeComboBox.SelectedIndex = 0;
         }
 
         public void SetSelectedFacet(DFacet facet)
         {
             _selectedFacet = facet;
             UpdateCheckboxes();
+            UpdateTextFields();
+            UpdateComboboxFields();
         }
 
         private void UpdateCheckboxes()
@@ -44,6 +59,26 @@ namespace UC_MapPainter
                 CheckboxTwoTextured.IsChecked = _selectedFacet.IsTwoSided();
                 CheckboxFenceCut.IsChecked = _selectedFacet.IsFenceCut();
                 // Add other flag checks here
+            }
+        }
+
+        private void UpdateTextFields()
+        {
+            BlockHeightBox.Text = _selectedFacet.BlockHeight.ToString();
+        }
+
+        private void UpdateComboboxFields()
+        {
+            if (_selectedFacet != null && FacetTypeComboBox.ItemsSource is IEnumerable<dynamic> items)
+            {
+                // Find the item in the ComboBox that matches the selected FacetType value
+                var matchingItem = items.FirstOrDefault(item => item.Value == _selectedFacet.FacetType);
+
+                // Set the selected item in the ComboBox
+                if (matchingItem != null)
+                {
+                    FacetTypeComboBox.SelectedItem = matchingItem;
+                }
             }
         }
 
@@ -253,5 +288,35 @@ namespace UC_MapPainter
                 _selectedFacet.UnsetFenceCut();
             }
         }
+
+        private void BlockHeightBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (byte.TryParse(BlockHeightBox.Text, out byte value))
+            {
+                _selectedFacet.BlockHeight = value;
+                //height = value;
+                //HeightSlider.Value = height;
+                //UpdateStoreyLabel();
+            }
+        }
+        private void FacetTypeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (FacetTypeComboBox.SelectedItem is not null)
+            {
+                var selectedItem = (dynamic)FacetTypeComboBox.SelectedItem;
+                string selectedName = selectedItem.Name;
+                int selectedValue = selectedItem.Value;
+
+
+                if (_selectedFacet != null)
+                {
+                    _selectedFacet.FacetType = (byte)selectedValue;
+                }
+
+                // Use the selected name and value
+                //MessageBox.Show($"Selected: {selectedName} (Value: {selectedValue})");
+            }
+        }
+
     }
 }
