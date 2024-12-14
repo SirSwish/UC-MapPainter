@@ -29,8 +29,10 @@
             <CheckBox Content="Fence Cut" Name="CheckboxFenceCut" Click="FenceCut_Click" />
         </StackPanel>
         <Label x:Name="FacetTypeLabel" Content="FacetType" HorizontalAlignment="Left" Margin="20,194,0,0" VerticalAlignment="Top"/>
-        <TextBox x:Name="BlockHeightBox" HorizontalAlignment="Left" Margin="103,255,0,0" TextWrapping="Wrap" Text="BlockHeight" VerticalAlignment="Top" Width="120" TextChanged="BlockHeightBox_TextChanged"/>
+        <TextBox x:Name="BlockHeightBox" HorizontalAlignment="Left" Margin="103,259,0,0" TextWrapping="Wrap" Text="BlockHeight" VerticalAlignment="Top" Width="120" TextChanged="BlockHeightBox_TextChanged"/>
         <ComboBox x:Name="FacetTypeComboBox" HorizontalAlignment="Center"  Margin="0,199,0,334" Width="194" SelectionChanged="FacetTypeComboBox_SelectionChanged" DisplayMemberPath="Name"/>
         <Label x:Name="BlockHeightLabel" Content="BlockHeight" HorizontalAlignment="Left" Margin="20,255,0,0" VerticalAlignment="Top"/>
+        <Label x:Name="DStyleLabel" Content="DStyle" HorizontalAlignment="Left" Margin="20,286,0,0" VerticalAlignment="Top"/>
+        <TextBox x:Name="DStyleBox" HorizontalAlignment="Left" Margin="103,290,0,0" TextWrapping="Wrap" Text="DStyle" VerticalAlignment="Top" Width="120" TextChanged="DStyle_TextChanged"/>
     </Grid>
 </Window>

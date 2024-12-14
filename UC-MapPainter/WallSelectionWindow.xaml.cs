@@ -5,12 +5,15 @@ using System.Windows.Controls;
 using System.Windows.Media.Media3D;
 using System.Linq;
 using System.Collections.Generic;
+using System.Windows.Input;
 
 namespace UC_MapPainter
 {
     public partial class WallSelectionWindow : Window
     {
         private DFacet _selectedFacet;
+        private List<short> _dstyles;
+        private int _selectedFacetDStyleIndex;
 
         public WallSelectionWindow()
         {
@@ -31,9 +34,11 @@ namespace UC_MapPainter
             FacetTypeComboBox.SelectedIndex = 0;
         }
 
-        public void SetSelectedFacet(DFacet facet)
+        public void SetSelectedFacet(DFacet facet, int facetDStyleIndex, List<short> dstyles)
         {
+            _dstyles = dstyles;
             _selectedFacet = facet;
+            _selectedFacetDStyleIndex = facetDStyleIndex;
             UpdateCheckboxes();
             UpdateTextFields();
             UpdateComboboxFields();
@@ -65,6 +70,7 @@ namespace UC_MapPainter
         private void UpdateTextFields()
         {
             BlockHeightBox.Text = _selectedFacet.BlockHeight.ToString();
+            DStyleBox.Text = _dstyles[_selectedFacetDStyleIndex].ToString();
         }
 
         private void UpdateComboboxFields()
@@ -318,5 +324,12 @@ namespace UC_MapPainter
             }
         }
 
+        private void DStyle_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (short.TryParse(DStyleBox.Text, out short value))
+            {
+                _dstyles[_selectedFacetDStyleIndex] = value;
+            }
+        }
     }
 }

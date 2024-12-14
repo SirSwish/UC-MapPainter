@@ -94,8 +94,13 @@ namespace UC_MapPainter
         //private List<List<Point>> buildings = new List<List<Point>>(); // Stores completed buildings
 
         private List<DFacet> facets = new(); // List of all facets created
+        private List<short> dstyles = new();
         private List<DBuilding> buildings = new(); // List of all buildings created
         private List<DStorey> storeys = new(); // List of all buildings created
+        private List<Line> wallCanvasLines = new();
+
+
+        private int currentlySelectedCanvasWallLine = 0;
         private int currentFacetIndex = 1; // Index of the next facet to be created
         private Line previewLine = null;
         
@@ -175,6 +180,17 @@ namespace UC_MapPainter
             CommandBindings.Add(new CommandBinding(
                 NavigationCommands.GoToPage, 
                 NavigateToPositionCommand_Executed
+            ));
+
+            // Bind Ctrl+N
+            InputBindings.Add(new KeyBinding(
+                NavigationCommands.BrowseForward,
+                //new KeyGesture(Key.Left, ModifierKeys.Control)
+                new KeyGesture(Key.N, ModifierKeys.Control)
+            ));
+            CommandBindings.Add(new CommandBinding(
+                NavigationCommands.BrowseForward,
+                NavigateNextWallCommand_Executed
             ));
 
             this.Closing += MainWindow_Closing; // Add this line
@@ -650,6 +666,16 @@ namespace UC_MapPainter
             return polygon.Distinct().ToList();
         }
 
+        private void NavigateNextWallCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            currentlySelectedCanvasWallLine++;
+            if(currentlySelectedCanvasWallLine >= wallCanvasLines.Count)
+            {
+                currentlySelectedCanvasWallLine = 0;
+            }
+            SelectWall(wallCanvasLines[currentlySelectedCanvasWallLine]);
+        }
+
         private void NavigateToPositionCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
             // Prompt the user for the position
@@ -871,7 +897,7 @@ namespace UC_MapPainter
 
 
 
-            List<byte> buildingsData = Map.PrepareBuildingsMock(buildings, facets, storeys);
+            List<byte> buildingsData = Map.PrepareBuildingsMock(buildings, facets, storeys, dstyles);
 
             // FIXME:
             // THIS NEEDS TO BE CALCULATED AS IT'S NOT ALWAYS ON A FIXED POSITION
@@ -1351,10 +1377,13 @@ namespace UC_MapPainter
                             //Z = new byte[] { (byte)(startPoint.Y / 64), (byte)(endPoint.Y / 64) }
                             
                             X = new byte[] { (byte)(startPoint.X), (byte)(endPoint.X ) },
-                            Z = new byte[] { (byte)(startPoint.Y), (byte)(endPoint.Y ) }
+                            Z = new byte[] { (byte)(startPoint.Y), (byte)(endPoint.Y ) },
+                            StyleIndex = (ushort) (facets.Count + 1),
                         };
 
                         facets.Add(newFacet);
+
+                        dstyles.Add(1);
 
 
                         // Render the wall line
@@ -1369,6 +1398,8 @@ namespace UC_MapPainter
                             //IsHitTestVisible = true
                         };
 
+                        //newFacet.wallCanvasLine = wallLine;
+
                         // Attach mouse event for selection
                         // Doesn't really work
                         //wallLine.MouseDown += WallLine_MouseDown;
@@ -1376,6 +1407,7 @@ namespace UC_MapPainter
                         // Add the wall line to the grid overlay and dictionary
                         OverlayGrid.Children.Add(wallLine);
                         wallLines[wallLine] = newFacet;
+                        wallCanvasLines.Add(wallLine);
 
                         currentFacetIndex++;
 
@@ -1634,6 +1666,44 @@ namespace UC_MapPainter
             return Math.Sqrt(Math.Pow(p.X - closestX, 2) + Math.Pow(p.Y - closestY, 2));
         }
 
+        private void SelectWall(Line clickedLine)
+        {
+            if (selectedWall != null)
+            {
+                selectedWall.Stroke = Brushes.Magenta; // Restore original color
+            }
+
+            selectedWall = clickedLine;
+            HighlightSelectedWall(selectedWall);
+            //selectedWall.Stroke = Brushes.Yellow; // Highlight selected line
+
+            // Optionally, fetch the associated DFacet for editing
+            if (wallLines.TryGetValue(selectedWall, out DFacet facet))
+            {
+                selectedFacet = facet;
+                // Display the selected facet's information (replace with your logic)
+
+
+                // Pass the selected facet to WallSelectionWindow
+                if (wallSelectionWindow == null || !wallSelectionWindow.IsVisible)
+                {
+                    wallSelectionWindow = new WallSelectionWindow();
+                    wallSelectionWindow.Show();
+                }
+
+                int i = facets.IndexOf(facet);
+                wallSelectionWindow.SetSelectedFacet(selectedFacet, i, dstyles);
+
+
+                //MessageBox.Show($"Selected wall: X1={selectedFacet.X[0]}, X2={selectedFacet.X[1]}, Z1={selectedFacet.Z[0]}, Z2={selectedFacet.Z[1]}");
+
+                //  selectedFacet.setClimbable();
+            }
+        }
+        private void HighlightSelectedWall(Line highlightedWall)
+        {
+            highlightedWall.Stroke = Brushes.Yellow; // Highlight selected line
+        }
         public void Cell_MouseMiddleButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (sender is Border cell)
@@ -1678,34 +1748,7 @@ namespace UC_MapPainter
                         // Highlight the closest line
                         if (closestLine != null)
                         {
-                            if (selectedWall != null)
-                            {
-                                selectedWall.Stroke = Brushes.Magenta; // Restore original color
-                            }
-
-                            selectedWall = closestLine;
-                            selectedWall.Stroke = Brushes.Yellow; // Highlight selected line
-
-                            // Optionally, fetch the associated DFacet for editing
-                            if (wallLines.TryGetValue(selectedWall, out DFacet facet))
-                            {
-                                selectedFacet = facet;
-                                // Display the selected facet's information (replace with your logic)
-
-
-                                // Pass the selected facet to WallSelectionWindow
-                                if (wallSelectionWindow == null || !wallSelectionWindow.IsVisible)
-                                {
-                                    wallSelectionWindow = new WallSelectionWindow();
-                                    wallSelectionWindow.Show();
-                                }
-                                wallSelectionWindow.SetSelectedFacet(selectedFacet);
-
-
-                                //MessageBox.Show($"Selected wall: X1={selectedFacet.X[0]}, X2={selectedFacet.X[1]}, Z1={selectedFacet.Z[0]}, Z2={selectedFacet.Z[1]}");
-
-                                //  selectedFacet.setClimbable();
-                            }
+                            SelectWall(closestLine);
                         }
                     }
                 }
