@@ -71,11 +71,10 @@
             </StackPanel>
         </Grid>
         <ProgressBar Name="ProgressBar" Height="20" DockPanel.Dock="Top" Margin="5,0"/>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+        <ScrollViewer x:Name="MainScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
             <Grid>
                 <Grid Name="MainContentGrid" MouseMove="MainContentGrid_MouseMove"/>
                 <Canvas Name="OverlayGrid" IsHitTestVisible="True"/>
-                <!-- Make the canvas hit-test visible -->
             </Grid>
         </ScrollViewer>
     </DockPanel>

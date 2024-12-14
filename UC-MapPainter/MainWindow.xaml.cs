@@ -166,6 +166,17 @@ namespace UC_MapPainter
             lightFunctions = new LightFunctions(this, lightSelectionWindow);
             textureFunctions = new TextureFunctions(gridModel, selectedWorldNumber, this);
             buildingFunctions = new BuildingFunctions(primFunctions, this); // Initialize buildingFunctions
+
+            // Bind Ctrl+G to the navigation command
+            InputBindings.Add(new KeyBinding(
+                NavigationCommands.GoToPage, 
+                new KeyGesture(Key.G, ModifierKeys.Control)
+            ));
+            CommandBindings.Add(new CommandBinding(
+                NavigationCommands.GoToPage, 
+                NavigateToPositionCommand_Executed
+            ));
+
             this.Closing += MainWindow_Closing; // Add this line
         }
 
@@ -637,6 +648,48 @@ namespace UC_MapPainter
 
             // Optionally remove duplicates if facets share vertices
             return polygon.Distinct().ToList();
+        }
+
+        private void NavigateToPositionCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            // Prompt the user for the position
+            string input = Microsoft.VisualBasic.Interaction.InputBox("Enter coordinates (e.g., 64,64):",
+                                                                      "Navigate to Position",
+                                                                      "64,64");
+            if (!string.IsNullOrEmpty(input) && input.Contains(","))
+            {
+                var parts = input.Split(',');
+                if (int.TryParse(parts[0], out int x) && int.TryParse(parts[1], out int y))
+                {
+                    NavigateToPosition(x, y);
+                }
+                else
+                {
+                    MessageBox.Show("Invalid input. Please enter coordinates in the format X,Y.", "Error");
+                }
+            }
+        }
+
+        private void NavigateToPosition(int x, int y)
+        {
+            // Ensure coordinates are within bounds
+            if (x < 0 || x >= 128 || y < 0 || y >= 128)
+            {
+                MessageBox.Show("Coordinates out of bounds.", "Error");
+                return;
+            }
+
+            // Assuming your grid is wrapped in a ScrollViewer
+            ScrollViewer scrollViewer = this.MainScrollViewer;
+
+            // Calculate the offset to center the cell
+            double cellSize = 64; // Each cell is 64x64
+            double offsetX = x * cellSize - (scrollViewer.ViewportWidth / 2) + (cellSize / 2);
+            double offsetY = y * cellSize - (scrollViewer.ViewportHeight / 2) + (cellSize / 2);
+
+            // Scroll to the calculated offsets
+            scrollViewer.ScrollToHorizontalOffset(Math.Max(0, offsetX));
+            scrollViewer.ScrollToVerticalOffset(Math.Max(0, offsetY));
         }
 
         (int minX, int maxX, int minZ, int maxZ) GetBoundingBox(List<(int X, int Z)> polygon)
