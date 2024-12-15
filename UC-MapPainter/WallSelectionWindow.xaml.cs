@@ -71,6 +71,7 @@ namespace UC_MapPainter
         {
             BlockHeightBox.Text = _selectedFacet.BlockHeight.ToString();
             DStyleBox.Text = _dstyles[_selectedFacetDStyleIndex].ToString();
+            YBox.Text = _selectedFacet.Y[0].ToString();
         }
 
         private void UpdateComboboxFields()
@@ -329,6 +330,15 @@ namespace UC_MapPainter
             if (short.TryParse(DStyleBox.Text, out short value))
             {
                 _dstyles[_selectedFacetDStyleIndex] = value;
+            }
+        }
+
+        private void YBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (short.TryParse(YBox.Text, out short value))
+            {
+                _selectedFacet.Y[0] = value;
+                _selectedFacet.Y[1] = value;
             }
         }
     }
