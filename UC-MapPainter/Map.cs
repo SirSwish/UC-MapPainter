@@ -286,7 +286,7 @@ namespace UC_MapPainter
             walkable.Z2 = maxZ;
         }
 
-        public static List<byte> PrepareBuildingsMock(List<DBuilding> buildings, List<DFacet> facets, List<DStorey> storeys)
+        public static List<byte> PrepareBuildingsMock(List<DBuilding> buildings, List<DFacet> facets, List<DStorey> storeys, List<short> dstyles)
         {
             // Initialize a dynamic buffer
             List<byte> byteBuffer = new List<byte>();
@@ -340,7 +340,7 @@ namespace UC_MapPainter
             //byteBuffer.Add(0); // Start of styles
             for (int i = 0; i < facets.Count; i++)
             {
-                style = 3;
+                style = (ushort) dstyles[i];
                 byteBuffer.AddRange(BitConverter.GetBytes(style));
             }
 
