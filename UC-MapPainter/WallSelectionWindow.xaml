@@ -34,5 +34,7 @@
         <Label x:Name="BlockHeightLabel" Content="BlockHeight" HorizontalAlignment="Left" Margin="20,255,0,0" VerticalAlignment="Top"/>
         <Label x:Name="DStyleLabel" Content="DStyle" HorizontalAlignment="Left" Margin="20,286,0,0" VerticalAlignment="Top"/>
         <TextBox x:Name="DStyleBox" HorizontalAlignment="Left" Margin="103,290,0,0" TextWrapping="Wrap" Text="DStyle" VerticalAlignment="Top" Width="120" TextChanged="DStyle_TextChanged"/>
+        <TextBox x:Name="YBox" HorizontalAlignment="Left" Margin="103,316,0,0" TextWrapping="Wrap" Text="Y" VerticalAlignment="Top" Width="120" TextChanged="YBox_TextChanged"/>
+        <Label x:Name="Y" Content="Y" HorizontalAlignment="Left" Margin="20,312,0,0" VerticalAlignment="Top"/>
     </Grid>
 </Window>

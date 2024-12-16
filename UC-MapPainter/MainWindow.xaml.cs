@@ -874,6 +874,9 @@ namespace UC_MapPainter
                 // Get facets for the current building
                 var buildingFacets = facets.Skip(building.StartFacet - 1).Take(building.EndFacet - building.StartFacet);
 
+                // Extract all Y values
+                var yValues = buildingFacets.Select(facet => facet.Y).ToList();
+
 
                 var polygon = GetPolygonFromFacets(buildingFacets);
                 var (minX, maxX, minZ, maxZ) = GetBoundingBox(polygon);
@@ -889,7 +892,11 @@ namespace UC_MapPainter
                             ushort hardcodedRoofFlags = 592;
 
                             Map.WritePapFlagsData(modifiedFileBytes, hardcodedRoofFlags, cellOffset);
-                            Map.WriteAltData(modifiedFileBytes, 4, cellOffset);
+                            
+                            short firstYValue = (short)(yValues[0].FirstOrDefault());
+
+                            byte height = (byte) ((firstYValue / 256) * 4 + 4);
+                            Map.WriteAltData(modifiedFileBytes, height, cellOffset);
                         }
                     }
                 }

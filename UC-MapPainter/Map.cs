@@ -376,7 +376,7 @@ namespace UC_MapPainter
             }
 
 
-            ushort next_dwalkable = 2;
+            ushort next_dwalkable = 3;
             byteBuffer.AddRange(BitConverter.GetBytes(next_dwalkable));
 
             ushort next_roof_face4 = 1;
@@ -396,6 +396,20 @@ namespace UC_MapPainter
             AssignWalkableBoundsFromFacets(facets, walkableMock);
 
             byteBuffer.AddRange(WriteSingleWalkableToBytes(walkableMock));
+
+            DWalkable walkableMock2 = new DWalkable();
+            walkableMock.StartFace4 = 1;
+            walkableMock.EndFace4 = 1;
+            walkableMock.Y = 16;
+            walkableMock.StoreyY = 4;
+            walkableMock.Building = 1;
+            walkableMock.StartPoint = 12773;
+            walkableMock.EndPoint = 12789;
+            walkableMock.Next = 1;
+
+            AssignWalkableBoundsFromFacets(facets, walkableMock2);
+
+            byteBuffer.AddRange(WriteSingleWalkableToBytes(walkableMock2));
 
 
             // Emtpy RoofFace4 For now
